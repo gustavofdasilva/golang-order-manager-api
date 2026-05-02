@@ -17,12 +17,13 @@ func InitDB() {
 	dbUser := config.DB_USER
 	dbPass := config.DB_PASS
 	dbName := config.DB_NAME
+	dbSslMode := config.DB_SSLMODE
 	maxOpenConn := config.MAX_CONNECTIONS
 	maxIdleConn := config.MAX_IDLE_CONNECTIONS
 	connMaxLifetime := config.CONNECTION_MAX_LIFETIME_MINUTES
 
 	var err error
-	db, err = sql.Open("postgres", fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", dbHost, dbUser, dbPass, dbName, dbPort))
+	db, err = sql.Open("postgres", fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s", dbHost, dbUser, dbPass, dbName, dbPort, dbSslMode))
 
 	db.SetMaxOpenConns(maxOpenConn)
 	db.SetMaxIdleConns(maxIdleConn)

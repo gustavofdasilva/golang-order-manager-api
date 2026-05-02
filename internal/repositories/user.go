@@ -67,7 +67,7 @@ func (repo *UserRepo) IsEmailAlreadyInUse(email string) (exists bool, err error)
 	query := `
 		select exists
 		(
-			select 1
+		select 1
 			from "users"
 			where email = $1
 		)

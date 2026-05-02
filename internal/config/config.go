@@ -17,6 +17,7 @@ var (
 	DB_USER                         string
 	DB_PASS                         string
 	DB_NAME                         string
+	DB_SSLMODE                      string
 	SECRET_KEY                      string
 	TOKEN_EXPIRATION_HOURS          int
 	MAX_CONNECTIONS                 int
@@ -38,6 +39,7 @@ func InitConfig() {
 	DB_USER = os.Getenv("DB_USER")
 	DB_PASS = os.Getenv("DB_PASS")
 	DB_NAME = os.Getenv("DB_NAME")
+	DB_SSLMODE = os.Getenv("DB_SSLMODE")
 	MAX_CONNECTIONS, err = strconv.Atoi(os.Getenv("MAX_CONNECTIONS"))
 	if err != nil {
 		slog.Error("Error parsing MAX_CONNECTIONS", "err", err)
@@ -70,6 +72,8 @@ func LogEnv() {
 	slog.Info("DB_HOST", "value", DB_HOST)
 	slog.Info("DB_USER", "value", DB_USER)
 	slog.Info("DB_NAME", "value", DB_NAME)
+	slog.Info("DB_SSLMODE", "value", DB_SSLMODE)
+	slog.Info("TOKEN_EXPIRATION_HOURS", "value", TOKEN_EXPIRATION_HOURS)
 	slog.Info("MAX_CONNECTIONS", "value", MAX_CONNECTIONS)
 	slog.Info("MAX_IDLE_CONNECTIONS", "value", MAX_IDLE_CONNECTIONS)
 	slog.Info("CONNECTION_MAX_LIFETIME_MINUTES", "value", CONNECTION_MAX_LIFETIME_MINUTES)

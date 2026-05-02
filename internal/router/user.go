@@ -7,9 +7,9 @@ import (
 )
 
 func initUserRouter(e *echo.Group) {
-	userPath := e.Group("/user")
+	userPath := e.Group("/auth")
 
-	userPath.POST("/", handlers.CreateUser)
+	userPath.POST("/register", handlers.CreateUser)
 	userPath.POST("/login", handlers.Login)
 	userPath.GET("/info", handlers.GetUserInfo)
 }

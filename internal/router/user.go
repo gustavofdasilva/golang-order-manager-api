@@ -2,14 +2,15 @@ package router
 
 import (
 	"golang-order-manager-api/internal/handlers"
+	"golang-order-manager-api/internal/middleware"
 
 	"github.com/labstack/echo/v4"
 )
 
 func initUserRouter(e *echo.Group) {
-	userPath := e.Group("/auth")
+	userPath := e.Group("/users")
 
-	userPath.POST("/register", handlers.CreateUser)
-	userPath.POST("/login", handlers.Login)
-	userPath.GET("/info", handlers.GetUserInfo)
+	userPath.GET("/me", handlers.GetUserInfo, middleware.CheckAuth)
+	userPath.DELETE("/me", handlers.DeleteUser, middleware.CheckAuth)
+	userPath.PATCH("/me", handlers.UpdateUser, middleware.CheckAuth)
 }

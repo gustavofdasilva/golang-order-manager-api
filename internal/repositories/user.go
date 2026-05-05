@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"golang-order-manager-api/internal/models"
 	"golang-order-manager-api/internal/services"
+
+	"github.com/google/uuid"
 )
 
 type UserRepo struct {
@@ -42,25 +44,71 @@ func (repo *UserRepo) CreateUser(username, email, password string) (user models.
 	return user, nil
 }
 
-func (repo *UserRepo) LoginUser(email, password string) (models.User, error) {
+func (repo *UserRepo) DeleteUser(id uuid.UUID) (err error) {
 	query := `
-		SELECT id, username, email, password FROM "users" u WHERE u.email = $1
+		UPDATE users SET deleted_at = NOW() WHERE id = $1
 	`
 
-	row := repo.db.QueryRow(query, email)
+	result, err := repo.db.Exec(query, id)
 
-	user := models.User{}
-	err := row.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return models.User{}, fmt.Errorf("error to scan row: %v", err)
+		return fmt.Errorf("error to get rows affected: %v", err)
 	}
 
-	err = services.ComparePassword(user.Password, password)
-	if err != nil {
-		return models.User{}, fmt.Errorf("error to compare passwords: %v", err)
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found for the given id: %v", id)
 	}
 
-	return user, nil
+	return nil
+}
+
+func (repo *UserRepo) UpdateUser(user models.User) (err error) {
+	//! BROKEN, TODO: Get ID by token, not by body
+
+	if user.Email != "" {
+		isEmailAlreadyInUse, err := repo.IsEmailAlreadyInUse(user.Email)
+		if err != nil {
+			return fmt.Errorf("error to check if email is already in use: %v", err)
+		}
+
+		if isEmailAlreadyInUse {
+			return fmt.Errorf("email is already in use: %v", user.Email)
+		}
+	}
+
+	if user.Username != "" {
+		isUsernameAlreadyInUse, err := repo.IsUsernameAlreadyInUse(user.Username)
+		if err != nil {
+			return fmt.Errorf("error to check if username is already in use: %v", err)
+		}
+
+		if isUsernameAlreadyInUse {
+			return fmt.Errorf("username is already in use: %v", user.Username)
+		}
+	}
+
+	query := `
+		UPDATE users 
+		SET 
+			username = COALESCE(NULLIF($1, ''), username),
+			email = COALESCE(NULLIF($2, ''), email),
+			password = COALESCE(NULLIF($3, ''), password)
+		WHERE id = $4
+	`
+
+	result, err := repo.db.Exec(query, user.Username, user.Email, user.Password, user.ID)
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error to get rows affected: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found for the given id: %v", user.ID)
+	}
+
+	return nil
 }
 
 func (repo *UserRepo) IsEmailAlreadyInUse(email string) (exists bool, err error) {

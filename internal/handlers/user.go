@@ -46,6 +46,42 @@ func CreateUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, token)
 }
 
+func DeleteUser(c echo.Context) error {
+	user := models.User{}
+
+	c.Bind(&user)
+
+	db := database.GetDB()
+
+	repo := repository.NewUserRepo(db)
+
+	err := repo.DeleteUser(user.ID)
+	if err != nil {
+		slog.Error("Failed to delete user", slog.Any("err", err))
+		return c.JSON(http.StatusInternalServerError, "Failed to delete user")
+	}
+
+	return c.JSON(http.StatusOK, "User deleted successfully")
+}
+
+func UpdateUser(c echo.Context) error {
+	user := models.User{}
+
+	c.Bind(&user)
+
+	db := database.GetDB()
+
+	repo := repository.NewUserRepo(db)
+
+	err := repo.UpdateUser(user)
+	if err != nil {
+		slog.Error("Failed to update user", slog.Any("err", err))
+		return c.JSON(http.StatusInternalServerError, "Failed to update user")
+	}
+
+	return c.JSON(http.StatusOK, "User updated successfully")
+}
+
 func Login(c echo.Context) error {
 	user := models.User{}
 
@@ -60,9 +96,10 @@ func Login(c echo.Context) error {
 
 	db := database.GetDB()
 
-	repo := repository.NewUserRepo(db)
+	repoAuth := repository.NewAuthRepo(db)
+	repoUser := repository.NewUserRepo(db)
 
-	emailAlreadyInUse, err := repo.IsEmailAlreadyInUse(user.Email)
+	emailAlreadyInUse, err := repoUser.IsEmailAlreadyInUse(user.Email)
 	if err != nil {
 		slog.Error("Failed to check email", slog.Any("err", err))
 		return c.JSON(http.StatusInternalServerError, "Failed to check email")
@@ -72,7 +109,7 @@ func Login(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, "User not found")
 	}
 
-	userInfo, err := repo.LoginUser(user.Email, user.Password)
+	userInfo, err := repoAuth.LoginUser(user.Email, user.Password)
 	if err != nil {
 		slog.Error("Failed to login user", slog.Any("err", err))
 		return c.JSON(http.StatusUnauthorized, "Invalid email or password")

@@ -1,8 +1,11 @@
 package middleware
 
 import (
-	"golang-order-manager-api/internal/services"
+	"golang-order-manager-api/internal/config"
+	auth "golang-order-manager-api/internal/services"
+	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,10 +21,15 @@ func CheckAuth(next echo.HandlerFunc) echo.HandlerFunc {
 			token = token[7:]
 		}
 
-		valid, err := services.VerifyToken(token)
-		if err != nil || !valid {
+		authService := auth.NewAuthService(nil, config.SECRET_KEY)
+
+		claims, err := authService.ParseToken(token)
+		if err != nil {
+			slog.Error("Failed to parse token", slog.Any("err", err))
 			return echo.ErrUnauthorized
 		}
+
+		c.Set("userID", uuid.MustParse(claims.UserID))
 
 		err = next(c)
 		return err

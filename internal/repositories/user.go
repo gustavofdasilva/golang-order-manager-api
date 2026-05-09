@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"golang-order-manager-api/internal/models"
-	"golang-order-manager-api/internal/services"
 
 	"github.com/google/uuid"
 )
@@ -17,7 +16,42 @@ func NewUserRepo(db *sql.DB) UserRepo {
 	return UserRepo{db: db}
 }
 
-func (repo *UserRepo) CreateUser(username, email, password string) (user models.User, err error) {
+func (repo *UserRepo) GetByEmail(email string) (user models.User, err error) {
+	query := `
+		SELECT id, username, email, password
+		FROM public."users"
+		WHERE email = $1
+	`
+
+	row := repo.db.QueryRow(query, email)
+
+	err = row.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error to scan row: %v", err)
+	}
+
+	return user, nil
+}
+
+func (repo *UserRepo) GetByID(id uuid.UUID) (user models.User, err error) {
+	query := `
+		SELECT id, username, email, password
+		FROM public."users"
+		WHERE id = $1
+		AND deleted_at IS NULL
+	`
+
+	row := repo.db.QueryRow(query, id)
+
+	err = row.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error to scan row: %v", err)
+	}
+
+	return user, nil
+}
+
+func (repo *UserRepo) CreateUser(user models.User) (models.User, error) {
 	query := `
 		INSERT INTO public."users"
 		(username,email,password)
@@ -26,27 +60,19 @@ func (repo *UserRepo) CreateUser(username, email, password string) (user models.
 		RETURNING id;
 	`
 
-	hashPassword, err := services.HashPassword(password)
-	if err != nil {
-		return models.User{}, fmt.Errorf("error to hash password: %v", err)
-	}
+	row := repo.db.QueryRow(query, user.Username, user.Email, user.Password)
 
-	row := repo.db.QueryRow(query, username, email, hashPassword)
-
-	err = row.Scan(&user.ID)
+	err := row.Scan(&user.ID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error to create user: %v", err)
 	}
 
-	user.Email = email
-	user.Username = username
-
 	return user, nil
 }
 
-func (repo *UserRepo) DeleteUser(id uuid.UUID) (err error) {
+func (repo *UserRepo) DeleteUserByID(id uuid.UUID) (err error) {
 	query := `
-		UPDATE users SET deleted_at = NOW() WHERE id = $1
+		UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	result, err := repo.db.Exec(query, id)
@@ -64,30 +90,6 @@ func (repo *UserRepo) DeleteUser(id uuid.UUID) (err error) {
 }
 
 func (repo *UserRepo) UpdateUser(user models.User) (err error) {
-	//! BROKEN, TODO: Get ID by token, not by body
-
-	if user.Email != "" {
-		isEmailAlreadyInUse, err := repo.IsEmailAlreadyInUse(user.Email)
-		if err != nil {
-			return fmt.Errorf("error to check if email is already in use: %v", err)
-		}
-
-		if isEmailAlreadyInUse {
-			return fmt.Errorf("email is already in use: %v", user.Email)
-		}
-	}
-
-	if user.Username != "" {
-		isUsernameAlreadyInUse, err := repo.IsUsernameAlreadyInUse(user.Username)
-		if err != nil {
-			return fmt.Errorf("error to check if username is already in use: %v", err)
-		}
-
-		if isUsernameAlreadyInUse {
-			return fmt.Errorf("username is already in use: %v", user.Username)
-		}
-	}
-
 	query := `
 		UPDATE users 
 		SET 
@@ -95,6 +97,7 @@ func (repo *UserRepo) UpdateUser(user models.User) (err error) {
 			email = COALESCE(NULLIF($2, ''), email),
 			password = COALESCE(NULLIF($3, ''), password)
 		WHERE id = $4
+		AND deleted_at IS NULL
 	`
 
 	result, err := repo.db.Exec(query, user.Username, user.Email, user.Password, user.ID)
@@ -111,17 +114,19 @@ func (repo *UserRepo) UpdateUser(user models.User) (err error) {
 	return nil
 }
 
-func (repo *UserRepo) IsEmailAlreadyInUse(email string) (exists bool, err error) {
+func (repo *UserRepo) IsEmailAlreadyInUse(email string, excludedID *uuid.UUID) (exists bool, err error) {
 	query := `
-		select exists
+		SELECT EXISTS
 		(
-		select 1
-			from "users"
-			where email = $1
+			SELECT 1
+			FROM "users"
+			WHERE email = $1
+			AND ($2::uuid IS NULL OR id != $2::uuid)
+			AND deleted_at IS NULL
 		)
 	`
 
-	row := repo.db.QueryRow(query, email)
+	row := repo.db.QueryRow(query, email, excludedID)
 
 	err = row.Scan(&exists)
 	if err != nil {
@@ -131,17 +136,19 @@ func (repo *UserRepo) IsEmailAlreadyInUse(email string) (exists bool, err error)
 	return exists, nil
 }
 
-func (repo *UserRepo) IsUsernameAlreadyInUse(username string) (exists bool, err error) {
+func (repo *UserRepo) IsUsernameAlreadyInUse(username string, excludedID *uuid.UUID) (exists bool, err error) {
 	query := `
-		select exists
+		SELECT EXISTS
 		(
-			select 1
-			from "users"
-			where username = $1
+			SELECT 1
+			FROM "users"
+			WHERE username = $1
+			AND ($2::uuid IS NULL OR id != $2::uuid)
+			AND deleted_at IS NULL
 		)
 	`
 
-	row := repo.db.QueryRow(query, username)
+	row := repo.db.QueryRow(query, username, excludedID)
 
 	err = row.Scan(&exists)
 	if err != nil {

@@ -9,6 +9,6 @@ import (
 func initAuthRouter(e *echo.Group) {
 	authPath := e.Group("/auth")
 
-	authPath.POST("/register", handlers.CreateUser)
+	authPath.POST("/register", handlers.Register)
 	authPath.POST("/login", handlers.Login)
 }

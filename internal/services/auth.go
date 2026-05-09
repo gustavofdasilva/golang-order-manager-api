@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/security"
@@ -38,7 +39,7 @@ func (s *AuthService) Register(username string, email string, password string) (
 	}
 
 	if exists {
-		return models.User{}, errors.New("email already in use")
+		return models.User{}, error_codes.ErrEmailAlreadyInUse
 	}
 
 	hashedPassword, err := security.HashPassword(password)
@@ -53,7 +54,6 @@ func (s *AuthService) Register(username string, email string, password string) (
 	}
 
 	user, err := s.userRepo.CreateUser(newUser)
-
 	if err != nil {
 		return models.User{}, err
 	}
@@ -70,7 +70,7 @@ func (s *AuthService) Login(email string, password string) (string, models.User,
 
 	err = security.ComparePassword(user.Password, password)
 	if err != nil {
-		return "", models.User{}, errors.New("invalid credentials")
+		return "", models.User{}, error_codes.ErrInvalidCredentials
 	}
 
 	token, err := s.GenerateToken(user)

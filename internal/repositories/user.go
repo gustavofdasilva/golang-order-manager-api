@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
 
 	"github.com/google/uuid"
@@ -21,12 +22,17 @@ func (repo *UserRepo) GetByEmail(email string) (user models.User, err error) {
 		SELECT id, username, email, password
 		FROM public."users"
 		WHERE email = $1
+		AND deleted_at IS NULL
 	`
 
 	row := repo.db.QueryRow(query, email)
 
 	err = row.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.User{}, error_codes.ErrUserNotFound
+		}
+
 		return models.User{}, fmt.Errorf("error to scan row: %v", err)
 	}
 
@@ -45,6 +51,10 @@ func (repo *UserRepo) GetByID(id uuid.UUID) (user models.User, err error) {
 
 	err = row.Scan(&user.ID, &user.Username, &user.Email, &user.Password)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.User{}, error_codes.ErrUserNotFound
+		}
+
 		return models.User{}, fmt.Errorf("error to scan row: %v", err)
 	}
 
@@ -83,7 +93,7 @@ func (repo *UserRepo) DeleteUserByID(id uuid.UUID) (err error) {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found for the given id: %v", id)
+		return error_codes.ErrUserNotFound
 	}
 
 	return nil
@@ -108,7 +118,7 @@ func (repo *UserRepo) UpdateUser(user models.User) (err error) {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found for the given id: %v", user.ID)
+		return error_codes.ErrUserNotFound
 	}
 
 	return nil

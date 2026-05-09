@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"errors"
+	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
+	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
 	"golang-order-manager-api/pkg/database"
 	"log"
@@ -29,10 +32,23 @@ func UpdateUser(c echo.Context) error {
 	newUser, err := userService.Update(user)
 	if err != nil {
 		slog.Error("Failed to update user", slog.Any("err", err))
-		return c.JSON(http.StatusInternalServerError, "Failed to update user")
+
+		if errors.Is(err, error_codes.ErrEmailAlreadyInUse) {
+			return responses.Error(c, http.StatusConflict, err)
+		}
+
+		if errors.Is(err, error_codes.ErrUsernameAlreadyInUse) {
+			return responses.Error(c, http.StatusConflict, err)
+		}
+
+		if errors.Is(err, error_codes.ErrUserNotFound) {
+			return responses.Error(c, http.StatusNotFound, err)
+		}
+
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
-	return c.JSON(http.StatusOK, newUser)
+	return responses.Success(c, http.StatusOK, "User updated successfully", newUser)
 }
 
 func DeleteUser(c echo.Context) error {
@@ -46,10 +62,15 @@ func DeleteUser(c echo.Context) error {
 	err := userService.Delete(userID)
 	if err != nil {
 		slog.Error("Failed to delete user", slog.Any("err", err))
-		return c.JSON(http.StatusInternalServerError, "Failed to delete user")
+
+		if errors.Is(err, error_codes.ErrUserNotFound) {
+			return responses.Error(c, http.StatusNotFound, err)
+		}
+
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
-	return c.JSON(http.StatusOK, "User deleted successfully")
+	return c.NoContent(http.StatusNoContent)
 }
 
 func GetUserInfo(c echo.Context) error {
@@ -64,8 +85,13 @@ func GetUserInfo(c echo.Context) error {
 	user, err := userService.GetByID(userID)
 	if err != nil {
 		slog.Error("Failed to get user info", slog.Any("err", err))
-		return c.JSON(http.StatusInternalServerError, "Failed to get user info")
+
+		if errors.Is(err, error_codes.ErrUserNotFound) {
+			return responses.Error(c, http.StatusNotFound, err)
+		}
+
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
-	return c.JSON(http.StatusOK, user)
+	return responses.Success(c, http.StatusOK, "User info retrieved successfully", user)
 }

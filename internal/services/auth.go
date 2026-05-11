@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
@@ -9,26 +8,23 @@ import (
 	"golang-order-manager-api/internal/security"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type AuthService struct {
-	userRepo  *repository.UserRepo
-	jwtSecret string
+	userRepo             *repository.UserRepo
+	authRepo             *repository.AuthRepo
+	refreshTokenDuration time.Duration
+	jwtSecret            string
 }
 
-func NewAuthService(userRepo *repository.UserRepo, jwtSecret string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepo, authRepo *repository.AuthRepo, jwtSecret string, refreshTokenDuration time.Duration) *AuthService {
 	return &AuthService{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:             userRepo,
+		authRepo:             authRepo,
+		refreshTokenDuration: refreshTokenDuration,
+		jwtSecret:            jwtSecret,
 	}
-}
-
-type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-
-	jwt.RegisteredClaims
 }
 
 func (s *AuthService) Register(username string, email string, password string) (models.User, error) {
@@ -61,80 +57,120 @@ func (s *AuthService) Register(username string, email string, password string) (
 	return user, nil
 }
 
-func (s *AuthService) Login(email string, password string) (string, models.User, error) {
+func (s *AuthService) Login(email string, password string) (string, string, models.User, error) {
 
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
-		return "", models.User{}, err
+		return "", "", models.User{}, err
 	}
 
 	err = security.ComparePassword(user.Password, password)
 	if err != nil {
-		return "", models.User{}, error_codes.ErrInvalidCredentials
+		return "", "", models.User{}, error_codes.ErrInvalidCredentials
 	}
 
-	token, err := s.GenerateToken(user)
+	token, err := security.GenerateToken(user, s.jwtSecret)
 	if err != nil {
-		return "", models.User{}, err
+		return "", "", models.User{}, err
+	}
+
+	refreshToken, err := security.GenerateRefreshToken()
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	err = s.SaveRefreshToken(user.ID, refreshToken)
+	if err != nil {
+		return "", "", models.User{}, err
 	}
 
 	user.Password = ""
 
-	return token, user, nil
+	return token, refreshToken, user, nil
 }
 
-func (s *AuthService) GenerateToken(user models.User) (string, error) {
+func (s *AuthService) Refresh(refreshToken string) (string, string, models.User, error) {
 
-	claims := Claims{
-		UserID: user.ID.String(),
-		Email:  user.Email,
-
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(
-				time.Now().Add(24 * time.Hour),
-			),
-
-			IssuedAt: jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodHS256,
-		claims,
-	)
-
-	tokenString, err := token.SignedString(
-		[]byte(s.jwtSecret),
-	)
-
+	userID, err := s.GetUserIDByRefreshToken(refreshToken)
 	if err != nil {
-		return "", fmt.Errorf(
-			"error generating token: %v",
-			err,
-		)
+		return "", "", models.User{}, err
 	}
 
-	return tokenString, nil
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	token, err := security.GenerateToken(user, s.jwtSecret)
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	hashedToken := security.HashToken(refreshToken)
+	err = s.authRepo.RevokeRefreshToken(hashedToken)
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	newRefreshToken, err := security.GenerateRefreshToken()
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	err = s.SaveRefreshToken(user.ID, newRefreshToken)
+	if err != nil {
+		return "", "", models.User{}, err
+	}
+
+	return token, newRefreshToken, user, nil
 }
 
-func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
+func (s *AuthService) Logout(refreshToken string) error {
 
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&Claims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(s.jwtSecret), nil
-		},
-	)
-
+	hashedToken := security.HashToken(refreshToken)
+	err := s.authRepo.RevokeRefreshToken(hashedToken)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid token")
+	return nil
+}
+
+func (s *AuthService) LogoutAll(userID uuid.UUID) error {
+	err := s.authRepo.RevokeAllRefreshTokens(userID)
+	if err != nil {
+		return err
 	}
 
-	return claims, nil
+	return nil
+}
+
+func (s *AuthService) SaveRefreshToken(userID uuid.UUID, refreshToken string) error {
+
+	expiresAt := time.Now().Add(s.refreshTokenDuration)
+
+	hashedToken := security.HashToken(refreshToken)
+
+	err := s.authRepo.SaveRefreshToken(userID, hashedToken, expiresAt)
+	if err != nil {
+		return fmt.Errorf("error saving refresh token: %v", err)
+	}
+
+	return nil
+}
+
+func (s *AuthService) GetUserIDByRefreshToken(refreshToken string) (uuid.UUID, error) {
+
+	hashedToken := security.HashToken(refreshToken)
+
+	userID, revokedAt, expiresAt, err := s.authRepo.GetRefreshToken(hashedToken)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("error retrieving refresh token: %v", err)
+	}
+
+	if !revokedAt.IsZero() || time.Now().After(expiresAt) {
+		return uuid.Nil, error_codes.ErrRefreshTokenExpired
+	}
+
+	return userID, nil
 }

@@ -10,19 +10,20 @@ import (
 )
 
 var (
-	API_PORT                        string
-	API_VERSION                     string
-	DB_PORT                         string
-	DB_HOST                         string
-	DB_USER                         string
-	DB_PASS                         string
-	DB_NAME                         string
-	DB_SSLMODE                      string
-	SECRET_KEY                      string
-	TOKEN_EXPIRATION_HOURS          int
-	MAX_CONNECTIONS                 int
-	MAX_IDLE_CONNECTIONS            int
-	CONNECTION_MAX_LIFETIME_MINUTES int
+	API_PORT                         string
+	API_VERSION                      string
+	DB_PORT                          string
+	DB_HOST                          string
+	DB_USER                          string
+	DB_PASS                          string
+	DB_NAME                          string
+	DB_SSLMODE                       string
+	SECRET_KEY                       string
+	TOKEN_EXPIRATION_MINUTES         int
+	REFRESH_TOKEN_EXPIRATION_MINUTES int
+	MAX_CONNECTIONS                  int
+	MAX_IDLE_CONNECTIONS             int
+	CONNECTION_MAX_LIFETIME_MINUTES  int
 )
 
 func InitConfig() {
@@ -56,10 +57,16 @@ func InitConfig() {
 		CONNECTION_MAX_LIFETIME_MINUTES = 5 // default to 5 minutes
 	}
 
-	TOKEN_EXPIRATION_HOURS, err = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_HOURS"))
+	TOKEN_EXPIRATION_MINUTES, err = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_MINUTES"))
 	if err != nil {
-		slog.Error("Error parsing TOKEN_EXPIRATION_HOURS", "err", err)
-		TOKEN_EXPIRATION_HOURS = 72 // default to 72 hours
+		slog.Error("Error parsing TOKEN_EXPIRATION_MINUTES", "err", err)
+		TOKEN_EXPIRATION_MINUTES = 60 // default to 60 minutes
+	}
+
+	REFRESH_TOKEN_EXPIRATION_MINUTES, err = strconv.Atoi(os.Getenv("REFRESH_TOKEN_EXPIRATION_MINUTES"))
+	if err != nil {
+		slog.Error("Error parsing REFRESH_TOKEN_EXPIRATION_MINUTES", "err", err)
+		REFRESH_TOKEN_EXPIRATION_MINUTES = 7 * 24 * 60 // default to 7 days in minutes
 	}
 
 	LogEnv()
@@ -73,7 +80,8 @@ func LogEnv() {
 	slog.Info("DB_USER", "value", DB_USER)
 	slog.Info("DB_NAME", "value", DB_NAME)
 	slog.Info("DB_SSLMODE", "value", DB_SSLMODE)
-	slog.Info("TOKEN_EXPIRATION_HOURS", "value", TOKEN_EXPIRATION_HOURS)
+	slog.Info("TOKEN_EXPIRATION_MINUTES", "value", TOKEN_EXPIRATION_MINUTES)
+	slog.Info("REFRESH_TOKEN_EXPIRATION_MINUTES", "value", REFRESH_TOKEN_EXPIRATION_MINUTES)
 	slog.Info("MAX_CONNECTIONS", "value", MAX_CONNECTIONS)
 	slog.Info("MAX_IDLE_CONNECTIONS", "value", MAX_IDLE_CONNECTIONS)
 	slog.Info("CONNECTION_MAX_LIFETIME_MINUTES", "value", CONNECTION_MAX_LIFETIME_MINUTES)

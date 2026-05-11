@@ -32,7 +32,7 @@ type Claims struct {
 }
 
 func (s *AuthService) Register(username string, email string, password string) (models.User, error) {
-
+	//TODO?: Validate username, if its already in use.
 	exists, err := s.userRepo.IsEmailAlreadyInUse(email, nil)
 	if err != nil {
 		return models.User{}, err

@@ -1,7 +1,7 @@
 package services
 
 import (
-	"errors"
+	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/security"
@@ -28,7 +28,7 @@ func (s *UserService) Update(user models.User) (models.User, error) {
 	}
 
 	if exists {
-		return models.User{}, errors.New("new email already in use")
+		return models.User{}, error_codes.ErrEmailAlreadyInUse
 	}
 
 	exists, err = s.userRepo.IsUsernameAlreadyInUse(user.Username, &user.ID)
@@ -37,7 +37,7 @@ func (s *UserService) Update(user models.User) (models.User, error) {
 	}
 
 	if exists {
-		return models.User{}, errors.New("new username already in use")
+		return models.User{}, error_codes.ErrUsernameAlreadyInUse
 	}
 
 	hashedPassword, err := security.HashPassword(user.Password)

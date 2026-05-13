@@ -50,8 +50,6 @@ func UpdateUser(c echo.Context) error {
 
 	updatedUser, err := userService.Update(user)
 	if err != nil {
-		slog.Error("Failed to update user", slog.Any("err", err))
-
 		if errors.Is(err, error_codes.ErrEmailAlreadyInUse) {
 			return responses.Error(c, http.StatusConflict, err)
 		}
@@ -64,6 +62,7 @@ func UpdateUser(c echo.Context) error {
 			return responses.Error(c, http.StatusNotFound, err)
 		}
 
+		slog.Error("Failed to update user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
@@ -97,12 +96,11 @@ func DeleteUser(c echo.Context) error {
 
 	err := userService.Delete(userID)
 	if err != nil {
-		slog.Error("Failed to delete user", slog.Any("err", err))
-
 		if errors.Is(err, error_codes.ErrUserNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
 		}
 
+		slog.Error("Failed to delete user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
@@ -130,12 +128,11 @@ func GetUserInfo(c echo.Context) error {
 
 	user, err := userService.GetByID(userID)
 	if err != nil {
-		slog.Error("Failed to get user info", slog.Any("err", err))
-
 		if errors.Is(err, error_codes.ErrUserNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
 		}
 
+		slog.Error("Failed to get user info", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 

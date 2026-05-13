@@ -6,6 +6,7 @@ import (
 	"golang-order-manager-api/internal/middleware"
 	"golang-order-manager-api/internal/router"
 	"golang-order-manager-api/pkg/database"
+	"golang-order-manager-api/pkg/logger"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -22,6 +23,7 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and the JWT token.
 func main() {
+	logger.Init()
 	config.InitConfig()
 	database.InitDB()
 	e := echo.New()

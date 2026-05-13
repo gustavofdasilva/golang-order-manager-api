@@ -52,8 +52,6 @@ func Register(c echo.Context) error {
 
 	_, err := authService.Register(req.Username, req.Email, req.Password)
 	if err != nil {
-		slog.Error("Failed to register user", slog.Any("err", err))
-
 		if errors.Is(err, error_codes.ErrEmailAlreadyInUse) {
 			return responses.Error(c, http.StatusBadRequest, err)
 		}
@@ -62,6 +60,7 @@ func Register(c echo.Context) error {
 			return responses.Error(c, http.StatusBadRequest, err)
 		}
 
+		slog.Error("Failed to register user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
@@ -103,8 +102,6 @@ func Login(c echo.Context) error {
 
 	token, refreshToken, user, err := authService.Login(req.Email, req.Password)
 	if err != nil {
-		slog.Error("Failed to login user", slog.Any("err", err))
-
 		if errors.Is(err, error_codes.ErrInvalidCredentials) {
 			return responses.Error(c, http.StatusUnauthorized, err)
 		}
@@ -113,6 +110,7 @@ func Login(c echo.Context) error {
 			return responses.Error(c, http.StatusNotFound, err)
 		}
 
+		slog.Error("Failed to login user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
@@ -164,7 +162,7 @@ func RefreshToken(c echo.Context) error {
 		}
 
 		slog.Error("Failed to refresh token", slog.Any("err", err))
-		return responses.Error(c, http.StatusUnauthorized, err)
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
 	response := dto.TokensResponse{
@@ -216,7 +214,7 @@ func Logout(c echo.Context) error {
 		}
 
 		slog.Error("Failed to logout user", slog.Any("err", err))
-		return responses.Error(c, http.StatusUnauthorized, err)
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
 	return responses.Success(c, http.StatusOK, "Logout successful", nil)
@@ -248,8 +246,8 @@ func LogoutAll(c echo.Context) error {
 			return responses.Error(c, http.StatusUnauthorized, err)
 		}
 
-		slog.Error("Failed to logout user", slog.Any("err", err))
-		return responses.Error(c, http.StatusUnauthorized, err)
+		slog.Error("Failed to logout all sessions", slog.Any("err", err))
+		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
 	return responses.Success(c, http.StatusOK, "Logout successful", nil)

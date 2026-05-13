@@ -24,6 +24,9 @@ var (
 	MAX_CONNECTIONS                  int
 	MAX_IDLE_CONNECTIONS             int
 	CONNECTION_MAX_LIFETIME_MINUTES  int
+	RATE_LIMIT_RPS                   float64
+	RATE_LIMIT_BURST                 int
+	RATE_LIMIT_EXPIRES_MINUTES       int
 )
 
 func InitConfig() {
@@ -69,6 +72,24 @@ func InitConfig() {
 		REFRESH_TOKEN_EXPIRATION_MINUTES = 7 * 24 * 60 // default to 7 days in minutes
 	}
 
+	RATE_LIMIT_RPS, err = strconv.ParseFloat(os.Getenv("RATE_LIMIT_RPS"), 64)
+	if err != nil {
+		slog.Error("Error parsing RATE_LIMIT_RPS", "err", err)
+		RATE_LIMIT_RPS = 10 // default to 10 requests per second
+	}
+
+	RATE_LIMIT_BURST, err = strconv.Atoi(os.Getenv("RATE_LIMIT_BURST"))
+	if err != nil {
+		slog.Error("Error parsing RATE_LIMIT_BURST", "err", err)
+		RATE_LIMIT_BURST = 30 // default burst of 30 requests
+	}
+
+	RATE_LIMIT_EXPIRES_MINUTES, err = strconv.Atoi(os.Getenv("RATE_LIMIT_EXPIRES_MINUTES"))
+	if err != nil {
+		slog.Error("Error parsing RATE_LIMIT_EXPIRES_MINUTES", "err", err)
+		RATE_LIMIT_EXPIRES_MINUTES = 3 // default to 3 minutes
+	}
+
 	LogEnv()
 }
 
@@ -85,4 +106,7 @@ func LogEnv() {
 	slog.Info("MAX_CONNECTIONS", "value", MAX_CONNECTIONS)
 	slog.Info("MAX_IDLE_CONNECTIONS", "value", MAX_IDLE_CONNECTIONS)
 	slog.Info("CONNECTION_MAX_LIFETIME_MINUTES", "value", CONNECTION_MAX_LIFETIME_MINUTES)
+	slog.Info("RATE_LIMIT_RPS", "value", RATE_LIMIT_RPS)
+	slog.Info("RATE_LIMIT_BURST", "value", RATE_LIMIT_BURST)
+	slog.Info("RATE_LIMIT_EXPIRES_MINUTES", "value", RATE_LIMIT_EXPIRES_MINUTES)
 }

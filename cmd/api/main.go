@@ -28,6 +28,7 @@ func main() {
 
 	api := e.Group(fmt.Sprintf("/api/v%s", config.API_VERSION))
 
+	api.Use(middleware.RateLimiter())
 	api.Use(middleware.LogRequest)
 	api.Use(middleware.CORSConfig())
 

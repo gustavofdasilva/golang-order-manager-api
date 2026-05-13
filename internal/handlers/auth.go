@@ -3,8 +3,8 @@ package handlers
 import (
 	"errors"
 	"golang-order-manager-api/internal/config"
+	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
-	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	auth "golang-order-manager-api/internal/services"
@@ -17,18 +17,30 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// Register godoc
+//
+// @Summary Register new user
+// @Description Creates a new user account. Requires email, username, and password.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterRequest true "Registration payload"
+// @Success 204 "User created successfully"
+// @Failure 400 {object} responses.ErrorResponse "Invalid fields or email/username already in use"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/register [post]
 func Register(c echo.Context) error {
-	user := models.User{}
+	req := dto.RegisterRequest{}
 
-	c.Bind(&user)
+	c.Bind(&req)
 
-	if user.Email == "" {
+	if req.Email == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidEmail)
 	}
-	if user.Password == "" {
+	if req.Password == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidPassword)
 	}
-	if user.Username == "" {
+	if req.Username == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidUsername)
 	}
 
@@ -38,7 +50,7 @@ func Register(c echo.Context) error {
 
 	authService := auth.NewAuthService(&repo, nil, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
-	_, err := authService.Register(user.Username, user.Email, user.Password)
+	_, err := authService.Register(req.Username, req.Email, req.Password)
 	if err != nil {
 		slog.Error("Failed to register user", slog.Any("err", err))
 
@@ -50,22 +62,35 @@ func Register(c echo.Context) error {
 			return responses.Error(c, http.StatusBadRequest, err)
 		}
 
-		slog.Error("Failed to register user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
+// Login godoc
+//
+// @Summary Login user
+// @Description Authenticates a user and returns access and refresh tokens
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.LoginRequest true "Login payload"
+// @Success 200 {object} dto.TokensResponse "Returns access_token, refresh_token, and user info"
+// @Failure 400 {object} responses.ErrorResponse "Missing email or password"
+// @Failure 401 {object} responses.ErrorResponse "Invalid credentials"
+// @Failure 404 {object} responses.ErrorResponse "User not found"
+// @Failure 500 {object} responses.ErrorResponse "Internal server error"
+// @Router /auth/login [post]
 func Login(c echo.Context) error {
-	user := models.User{}
+	req := dto.LoginRequest{}
 
-	c.Bind(&user)
+	c.Bind(&req)
 
-	if user.Email == "" {
+	if req.Email == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidEmail)
 	}
-	if user.Password == "" {
+	if req.Password == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidPassword)
 	}
 
@@ -76,7 +101,7 @@ func Login(c echo.Context) error {
 
 	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
-	token, refreshToken, user, err := authService.Login(user.Email, user.Password)
+	token, refreshToken, user, err := authService.Login(req.Email, req.Password)
 	if err != nil {
 		slog.Error("Failed to login user", slog.Any("err", err))
 
@@ -88,26 +113,40 @@ func Login(c echo.Context) error {
 			return responses.Error(c, http.StatusNotFound, err)
 		}
 
-		slog.Error("Failed to login user", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
 	}
 
-	response := make(map[string]interface{})
-	response["access_token"] = token
-	response["refresh_token"] = refreshToken
-	response["user"] = user
+	response := dto.TokensResponse{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		User: dto.UserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		},
+	}
 
 	return responses.Success(c, http.StatusOK, "Login successful", response)
 }
 
+// RefreshToken godoc
+//
+// @Summary Refresh access token
+// @Description Rotates the access and refresh token pair using a valid refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenRequest true "Refresh token payload"
+// @Success 200 {object} dto.TokensResponse "Returns new access_token, refresh_token, and user info"
+// @Failure 400 {object} responses.ErrorResponse "Missing refresh token"
+// @Failure 401 {object} responses.ErrorResponse "Invalid, expired, or not found refresh token"
+// @Router /auth/refresh [post]
 func RefreshToken(c echo.Context) error {
-	body := struct {
-		RefreshToken string `json:"refresh_token"`
-	}{}
+	req := dto.RefreshTokenRequest{}
 
-	c.Bind(&body)
+	c.Bind(&req)
 
-	if body.RefreshToken == "" {
+	if req.RefreshToken == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidRefreshToken)
 	}
 
@@ -118,9 +157,8 @@ func RefreshToken(c echo.Context) error {
 
 	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
-	token, refreshToken, user, err := authService.Refresh(body.RefreshToken)
+	token, newRefreshToken, user, err := authService.Refresh(req.RefreshToken)
 	if err != nil {
-
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)
 		}
@@ -129,22 +167,38 @@ func RefreshToken(c echo.Context) error {
 		return responses.Error(c, http.StatusUnauthorized, err)
 	}
 
-	response := make(map[string]interface{})
-	response["access_token"] = token
-	response["refresh_token"] = refreshToken
-	response["user"] = user
+	response := dto.TokensResponse{
+		AccessToken:  token,
+		RefreshToken: newRefreshToken,
+		User: dto.UserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		},
+	}
 
 	return responses.Success(c, http.StatusOK, "Refresh successful", response)
 }
 
+// Logout godoc
+//
+// @Summary Logout user
+// @Description Invalidates a specific refresh token, ending the current session
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.RefreshTokenRequest true "Refresh token to invalidate"
+// @Success 200 {object} responses.SuccessResponse "Logout successful"
+// @Failure 400 {object} responses.ErrorResponse "Missing refresh token"
+// @Failure 401 {object} responses.ErrorResponse "Invalid, expired, or not found refresh token"
+// @Router /auth/logout [post]
 func Logout(c echo.Context) error {
-	body := struct {
-		RefreshToken string `json:"refresh_token"`
-	}{}
+	req := dto.RefreshTokenRequest{}
 
-	c.Bind(&body)
+	c.Bind(&req)
 
-	if body.RefreshToken == "" {
+	if req.RefreshToken == "" {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidRefreshToken)
 	}
 
@@ -155,9 +209,8 @@ func Logout(c echo.Context) error {
 
 	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
-	err := authService.Logout(body.RefreshToken)
+	err := authService.Logout(req.RefreshToken)
 	if err != nil {
-
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)
 		}
@@ -169,6 +222,16 @@ func Logout(c echo.Context) error {
 	return responses.Success(c, http.StatusOK, "Logout successful", nil)
 }
 
+// LogoutAll godoc
+//
+// @Summary Logout from all devices
+// @Description Invalidates all refresh tokens for the authenticated user
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} responses.SuccessResponse "Logout successful"
+// @Failure 401 {object} responses.ErrorResponse "Unauthorized or invalid session"
+// @Router /auth/logout-all [post]
 func LogoutAll(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
@@ -181,7 +244,6 @@ func LogoutAll(c echo.Context) error {
 
 	err := authService.LogoutAll(userID)
 	if err != nil {
-
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)
 		}

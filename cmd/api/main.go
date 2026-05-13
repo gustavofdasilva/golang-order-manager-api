@@ -9,8 +9,18 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+// @title Golang Order Manager API
+// @version 1.0
+// @description Production-inspired REST API built with Go.
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and the JWT token.
 func main() {
 	config.InitConfig()
 	database.InitDB()
@@ -22,6 +32,8 @@ func main() {
 	api.Use(middleware.CORSConfig())
 
 	router.InitRouter(api)
+
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	port := strings.TrimLeft(config.API_PORT, ":")
 	e.Logger.Fatal(e.Start(fmt.Sprintf("127.0.0.1:%s", port)))

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"golang-order-manager-api/internal/config"
+	"golang-order-manager-api/internal/handlers"
 	"golang-order-manager-api/internal/middleware"
 	"golang-order-manager-api/internal/router"
 	"golang-order-manager-api/pkg/database"
@@ -36,6 +37,7 @@ func main() {
 
 	router.InitRouter(api)
 
+	e.GET("/health", handlers.Health)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	port := strings.TrimLeft(config.API_PORT, ":")

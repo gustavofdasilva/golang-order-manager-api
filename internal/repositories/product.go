@@ -76,19 +76,20 @@ func (r *ProductRepo) Create(p models.Product) (models.Product, error) {
 	return p, nil
 }
 
-func (r *ProductRepo) Update(p models.Product) (models.Product, error) {
+func (r *ProductRepo) Update(id uuid.UUID, name, description string, price *float64, stock *int) (models.Product, error) {
 	query := `
 		UPDATE items
 		SET
-			name        = $1,
-			description = $2,
-			price       = $3,
-			stock       = $4,
+			name        = COALESCE(NULLIF($1, ''), name),
+			description = COALESCE(NULLIF($2, ''), description),
+			price       = COALESCE($3, price),
+			stock       = COALESCE($4, stock),
 			updated_at  = NOW()
 		WHERE id = $5 AND deleted_at IS NULL
 		RETURNING id, name, description, price, stock, created_at, updated_at
 	`
-	err := r.db.QueryRow(query, p.Name, p.Description, p.Price, p.Stock, p.ID).
+	var p models.Product
+	err := r.db.QueryRow(query, name, description, price, stock, id).
 		Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {

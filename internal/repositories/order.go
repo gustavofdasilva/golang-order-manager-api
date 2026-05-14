@@ -62,7 +62,7 @@ func (r *OrderRepo) GetByIDAndUserID(orderID, userID uuid.UUID) (models.Order, e
 		return models.Order{}, fmt.Errorf("error scanning order: %v", err)
 	}
 
-	items, err := r.GetItems(orderID)
+	items, err := r.GetItemsByOrderID(orderID)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -71,8 +71,7 @@ func (r *OrderRepo) GetByIDAndUserID(orderID, userID uuid.UUID) (models.Order, e
 	return o, nil
 }
 
-// TODO: Rename to GetItemsByOrderID ?
-func (r *OrderRepo) GetItems(orderID uuid.UUID) ([]models.OrderItem, error) {
+func (r *OrderRepo) GetItemsByOrderID(orderID uuid.UUID) ([]models.OrderItem, error) {
 	query := `
 		SELECT id, order_id, item_id, quantity, price_at_purchase, subtotal
 		FROM order_items

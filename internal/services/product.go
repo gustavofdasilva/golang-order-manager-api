@@ -35,33 +35,13 @@ func (s *ProductService) Create(p models.Product) (models.Product, error) {
 }
 
 func (s *ProductService) Update(id uuid.UUID, name, description string, price *float64, stock *int) (models.Product, error) {
-
-	//TODO: Woudnt be better to just update in the repo like 'COALESCE($1, name)' and avoid the extra query to get the current values? This way we also avoid
-	current, err := s.productRepo.GetByID(id)
-	if err != nil {
-		return models.Product{}, err
+	if price != nil && *price < 0 {
+		return models.Product{}, error_codes.ErrInvalidPrice
 	}
-
-	if name != "" {
-		current.Name = name
+	if stock != nil && *stock < 0 {
+		return models.Product{}, error_codes.ErrInvalidStock
 	}
-	if description != "" {
-		current.Description = description
-	}
-	if price != nil {
-		if *price < 0 { //TODO: Free products allowed?
-			return models.Product{}, error_codes.ErrInvalidPrice
-		}
-		current.Price = *price
-	}
-	if stock != nil {
-		if *stock < 0 {
-			return models.Product{}, error_codes.ErrInvalidStock
-		}
-		current.Stock = *stock
-	}
-
-	return s.productRepo.Update(current)
+	return s.productRepo.Update(id, name, description, price, stock)
 }
 
 func (s *ProductService) Delete(id uuid.UUID) error {

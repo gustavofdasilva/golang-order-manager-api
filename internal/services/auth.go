@@ -28,7 +28,6 @@ func NewAuthService(userRepo *repository.UserRepo, authRepo *repository.AuthRepo
 }
 
 func (s *AuthService) Register(username string, email string, password string) (models.User, error) {
-	//TODO?: Validate username, if its already in use.
 	exists, err := s.userRepo.IsEmailAlreadyInUse(email, nil)
 	if err != nil {
 		return models.User{}, err
@@ -36,6 +35,15 @@ func (s *AuthService) Register(username string, email string, password string) (
 
 	if exists {
 		return models.User{}, error_codes.ErrEmailAlreadyInUse
+	}
+
+	exists, err = s.userRepo.IsUsernameAlreadyInUse(username, nil)
+	if err != nil {
+		return models.User{}, err
+	}
+
+	if exists {
+		return models.User{}, error_codes.ErrUsernameAlreadyInUse
 	}
 
 	hashedPassword, err := security.HashPassword(password)

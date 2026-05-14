@@ -99,7 +99,6 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 	return order, nil
 }
 
-// TODO: Refactor this method to reduce its Cognitive Complexity from 19 to the 15 allowed. [+13 locations]
 func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error) {
 	if !newStatus.IsValid() {
 		return models.Order{}, error_codes.ErrInvalidOrderStatus
@@ -123,21 +122,15 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 		return models.Order{}, error_codes.ErrOrderStatusTransition
 	}
 
-	// Decrement stock when order is paid
 	if newStatus == models.OrderStatusPaid {
-		for _, item := range order.Items {
-			if err := productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
-				return models.Order{}, err
-			}
+		if err := decrementStockForItems(productRepo, order.Items); err != nil {
+			return models.Order{}, err
 		}
 	}
 
-	// Restore stock when a paid order is cancelled
 	if newStatus == models.OrderStatusCancelled && order.Status == models.OrderStatusPaid {
-		for _, item := range order.Items {
-			if err := productRepo.IncrementStock(item.ProductID, item.Quantity); err != nil {
-				return models.Order{}, err
-			}
+		if err := incrementStockForItems(productRepo, order.Items); err != nil {
+			return models.Order{}, err
 		}
 	}
 
@@ -151,4 +144,22 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 
 	order.Status = newStatus
 	return order, nil
+}
+
+func decrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+	for _, item := range items {
+		if err := productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func incrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+	for _, item := range items {
+		if err := productRepo.IncrementStock(item.ProductID, item.Quantity); err != nil {
+			return err
+		}
+	}
+	return nil
 }

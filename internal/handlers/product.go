@@ -32,25 +32,48 @@ func parsePaginationParams(c echo.Context) (page, limit int) {
 	return
 }
 
+func parseProductFilter(c echo.Context) repository.ProductFilter {
+	f := repository.ProductFilter{}
+	if v := c.QueryParam("name"); v != "" {
+		f.Name = &v
+	}
+	if v, err := strconv.ParseFloat(c.QueryParam("min_price"), 64); err == nil {
+		f.MinPrice = &v
+	}
+	if v, err := strconv.ParseFloat(c.QueryParam("max_price"), 64); err == nil {
+		f.MaxPrice = &v
+	}
+	if c.QueryParam("in_stock") == "true" {
+		v := true
+		f.InStock = &v
+	}
+	return f
+}
+
 // ListProducts godoc
 //
 // @Summary List all products
 // @Description Returns all active products
 // @Tags Products
 // @Produce json
-// @Param page query int false "Page number" default(1)
-// @Param limit query int false "Items per page (max 100)" default(10)
+// @Param page      query int    false "Page number" default(1)
+// @Param limit     query int    false "Items per page (max 100)" default(10)
+// @Param name      query string false "Filter by name (partial, case-insensitive)"
+// @Param min_price query number false "Filter by minimum price"
+// @Param max_price query number false "Filter by maximum price"
+// @Param in_stock  query bool   false "If true, returns only products with stock > 0"
 // @Success 200 {object} responses.PaginatedResponse{data=[]dto.ProductResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products [get]
 func ListProducts(c echo.Context) error {
 	page, limit := parsePaginationParams(c)
+	filter := parseProductFilter(c)
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
 	productService := services.NewProductService(&repo)
 
-	products, total, err := productService.GetAll(page, limit)
+	products, total, err := productService.GetAll(page, limit, filter)
 	if err != nil {
 		slog.Error("Failed to list products", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)

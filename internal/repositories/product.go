@@ -10,6 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProductFilter struct {
+	Name     *string
+	MinPrice *float64
+	MaxPrice *float64
+	InStock  *bool
+}
+
 type ProductRepo struct {
 	db DBTX
 }
@@ -18,20 +25,28 @@ func NewProductRepo(db DBTX) ProductRepo {
 	return ProductRepo{db: db}
 }
 
-func (r *ProductRepo) GetAll(limit, offset int) ([]models.Product, int, error) {
+func (r *ProductRepo) GetAll(limit, offset int, f ProductFilter) ([]models.Product, int, error) {
+	filterClause := `
+		AND ($1::text    IS NULL OR name  ILIKE '%' || $1 || '%')
+		AND ($2::numeric IS NULL OR price >= $2)
+		AND ($3::numeric IS NULL OR price <= $3)
+		AND ($4::boolean IS NULL OR stock > 0)
+	`
+
 	var total int
-	if err := r.db.QueryRow(`SELECT COUNT(*) FROM items WHERE deleted_at IS NULL`).Scan(&total); err != nil {
+	countQuery := `SELECT COUNT(*) FROM items WHERE deleted_at IS NULL ` + filterClause
+	if err := r.db.QueryRow(countQuery, f.Name, f.MinPrice, f.MaxPrice, f.InStock).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("error counting products: %v", err)
 	}
 
 	query := `
 		SELECT id, name, description, price, stock, created_at, updated_at
 		FROM items
-		WHERE deleted_at IS NULL
+		WHERE deleted_at IS NULL ` + filterClause + `
 		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
+		LIMIT $5 OFFSET $6
 	`
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.Query(query, f.Name, f.MinPrice, f.MaxPrice, f.InStock, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error querying products: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
+	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
 	"golang-order-manager-api/pkg/database"
@@ -16,6 +17,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func parseOrderFilter(c echo.Context) repository.OrderFilter {
+	f := repository.OrderFilter{}
+	if v := c.QueryParam("status"); v != "" {
+		f.Status = &v
+	}
+	return f
+}
+
 // ListOrders godoc
 //
 // @Summary List user orders
@@ -23,19 +32,21 @@ import (
 // @Tags Orders
 // @Produce json
 // @Security BearerAuth
-// @Param page query int false "Page number" default(1)
-// @Param limit query int false "Items per page (max 100)" default(10)
+// @Param page   query int    false "Page number" default(1)
+// @Param limit  query int    false "Items per page (max 100)" default(10)
+// @Param status query string false "Filter by status (pending, paid, completed, cancelled)"
 // @Success 200 {object} responses.PaginatedResponse{data=[]dto.OrderResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders [get]
 func ListOrders(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 	page, limit := parsePaginationParams(c)
+	filter := parseOrderFilter(c)
 
 	db := database.GetDB()
 	orderService := services.NewOrderService(db)
 
-	orders, total, err := orderService.GetAllByUserID(userID, page, limit)
+	orders, total, err := orderService.GetAllByUserID(userID, page, limit, filter)
 	if err != nil {
 		slog.Error("Failed to list orders", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)

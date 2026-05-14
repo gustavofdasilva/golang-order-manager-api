@@ -16,9 +16,9 @@ func NewProductService(productRepo *repository.ProductRepo) *ProductService {
 	return &ProductService{productRepo: productRepo}
 }
 
-func (s *ProductService) GetAll(page, limit int) ([]models.Product, int, error) {
+func (s *ProductService) GetAll(page, limit int, filter repository.ProductFilter) ([]models.Product, int, error) {
 	offset := (page - 1) * limit
-	return s.productRepo.GetAll(limit, offset)
+	return s.productRepo.GetAll(limit, offset, filter)
 }
 
 func (s *ProductService) GetByID(id uuid.UUID) (models.Product, error) {
@@ -26,7 +26,7 @@ func (s *ProductService) GetByID(id uuid.UUID) (models.Product, error) {
 }
 
 func (s *ProductService) Create(p models.Product) (models.Product, error) {
-	if p.Price < 0 { //TODO: Free products allowed?
+	if p.Price < 0 {
 		return models.Product{}, error_codes.ErrInvalidPrice
 	}
 	if p.Stock < 0 {

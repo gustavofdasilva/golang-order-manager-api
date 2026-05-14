@@ -24,10 +24,10 @@ func NewOrderService(db *sql.DB) *OrderService {
 	return &OrderService{db: db}
 }
 
-func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int) ([]models.Order, int, error) {
+func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter repository.OrderFilter) ([]models.Order, int, error) {
 	repo := repository.NewOrderRepo(s.db)
 	offset := (page - 1) * limit
-	return repo.GetAllByUserID(userID, limit, offset)
+	return repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
 func (s *OrderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {

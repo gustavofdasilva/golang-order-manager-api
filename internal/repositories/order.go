@@ -10,6 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrderFilter struct {
+	Status *string
+}
+
 type OrderRepo struct {
 	db DBTX
 }
@@ -18,9 +22,10 @@ func NewOrderRepo(db DBTX) OrderRepo {
 	return OrderRepo{db: db}
 }
 
-func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int) ([]models.Order, int, error) {
+func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderFilter) ([]models.Order, int, error) {
 	var total int
-	if err := r.db.QueryRow(`SELECT COUNT(*) FROM orders WHERE user_id = $1`, userID).Scan(&total); err != nil {
+	countQuery := `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)`
+	if err := r.db.QueryRow(countQuery, userID, f.Status).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("error counting orders: %v", err)
 	}
 
@@ -28,11 +33,11 @@ func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int) ([]model
 		SELECT id, user_id, status, total_amount, created_at, updated_at
 		FROM orders
 		WHERE user_id = $1
+		  AND ($2::text IS NULL OR status = $2)
 		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3
+		LIMIT $3 OFFSET $4
 	`
-
-	rows, err := r.db.Query(query, userID, limit, offset)
+	rows, err := r.db.Query(query, userID, f.Status, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error querying orders: %v", err)
 	}

@@ -23,16 +23,19 @@ import (
 // @Tags Orders
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} responses.SuccessResponse{data=[]dto.OrderResponse}
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page (max 100)" default(10)
+// @Success 200 {object} responses.PaginatedResponse{data=[]dto.OrderResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders [get]
 func ListOrders(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
+	page, limit := parsePaginationParams(c)
 
 	db := database.GetDB()
 	orderService := services.NewOrderService(db)
 
-	orders, err := orderService.GetAllByUserID(userID)
+	orders, total, err := orderService.GetAllByUserID(userID, page, limit)
 	if err != nil {
 		slog.Error("Failed to list orders", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
@@ -43,7 +46,13 @@ func ListOrders(c echo.Context) error {
 		result[i] = toOrderResponse(o)
 	}
 
-	return responses.Success(c, http.StatusOK, "Orders retrieved successfully", result)
+	totalPages := (total + limit - 1) / limit
+	return responses.Paginated(c, http.StatusOK, "Orders retrieved successfully", result, responses.Pagination{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+	})
 }
 
 // GetOrder godoc

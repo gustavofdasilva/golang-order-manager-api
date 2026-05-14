@@ -16,8 +16,9 @@ func NewProductService(productRepo *repository.ProductRepo) *ProductService {
 	return &ProductService{productRepo: productRepo}
 }
 
-func (s *ProductService) GetAll() ([]models.Product, error) {
-	return s.productRepo.GetAll()
+func (s *ProductService) GetAll(page, limit int) ([]models.Product, int, error) {
+	offset := (page - 1) * limit
+	return s.productRepo.GetAll(limit, offset)
 }
 
 func (s *ProductService) GetByID(id uuid.UUID) (models.Product, error) {

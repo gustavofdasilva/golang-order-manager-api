@@ -16,7 +16,6 @@ type OrderItemInput struct {
 	Quantity  int
 }
 
-// TODO? db should be a dependency of the repository, not the service. The service should receive the repository as a dependency, not the db. This way we can mock the repository in tests and avoid using a real database connection.
 type OrderService struct {
 	db *sql.DB
 }
@@ -25,9 +24,10 @@ func NewOrderService(db *sql.DB) *OrderService {
 	return &OrderService{db: db}
 }
 
-func (s *OrderService) GetAllByUserID(userID uuid.UUID) ([]models.Order, error) {
+func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int) ([]models.Order, int, error) {
 	repo := repository.NewOrderRepo(s.db)
-	return repo.GetAllByUserID(userID)
+	offset := (page - 1) * limit
+	return repo.GetAllByUserID(userID, limit, offset)
 }
 
 func (s *OrderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {

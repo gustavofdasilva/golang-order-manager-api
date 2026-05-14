@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
@@ -17,8 +18,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// TODO? Error code should be in 'error_codes'
 const errInvalidProductID = "invalid product id"
+
+func parsePaginationParams(c echo.Context) (page, limit int) {
+	page, _ = strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ = strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	return
+}
 
 // ListProducts godoc
 //
@@ -26,15 +38,19 @@ const errInvalidProductID = "invalid product id"
 // @Description Returns all active products
 // @Tags Products
 // @Produce json
-// @Success 200 {object} responses.SuccessResponse{data=[]dto.ProductResponse}
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page (max 100)" default(10)
+// @Success 200 {object} responses.PaginatedResponse{data=[]dto.ProductResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products [get]
 func ListProducts(c echo.Context) error {
+	page, limit := parsePaginationParams(c)
+
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
 	productService := services.NewProductService(&repo)
 
-	products, err := productService.GetAll()
+	products, total, err := productService.GetAll(page, limit)
 	if err != nil {
 		slog.Error("Failed to list products", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
@@ -52,7 +68,13 @@ func ListProducts(c echo.Context) error {
 		}
 	}
 
-	return responses.Success(c, http.StatusOK, "Products retrieved successfully", result)
+	totalPages := (total + limit - 1) / limit
+	return responses.Paginated(c, http.StatusOK, "Products retrieved successfully", result, responses.Pagination{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+	})
 }
 
 // GetProduct godoc

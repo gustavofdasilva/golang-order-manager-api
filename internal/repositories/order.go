@@ -18,17 +18,23 @@ func NewOrderRepo(db DBTX) OrderRepo {
 	return OrderRepo{db: db}
 }
 
-func (r *OrderRepo) GetAllByUserID(userID uuid.UUID) ([]models.Order, error) {
+func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int) ([]models.Order, int, error) {
+	var total int
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM orders WHERE user_id = $1`, userID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("error counting orders: %v", err)
+	}
+
 	query := `
 		SELECT id, user_id, status, total_amount, created_at, updated_at
 		FROM orders
 		WHERE user_id = $1
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(query, userID)
+	rows, err := r.db.Query(query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("error querying orders: %v", err)
+		return nil, 0, fmt.Errorf("error querying orders: %v", err)
 	}
 	defer rows.Close()
 
@@ -36,14 +42,14 @@ func (r *OrderRepo) GetAllByUserID(userID uuid.UUID) ([]models.Order, error) {
 	for rows.Next() {
 		var o models.Order
 		if err := rows.Scan(&o.ID, &o.UserID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("error scanning order: %v", err)
+			return nil, 0, fmt.Errorf("error scanning order: %v", err)
 		}
 		orders = append(orders, o)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating orders: %v", err)
+		return nil, 0, fmt.Errorf("error iterating orders: %v", err)
 	}
-	return orders, nil
+	return orders, total, nil
 }
 
 func (r *OrderRepo) GetByIDAndUserID(orderID, userID uuid.UUID) (models.Order, error) {

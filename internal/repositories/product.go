@@ -18,16 +18,22 @@ func NewProductRepo(db DBTX) ProductRepo {
 	return ProductRepo{db: db}
 }
 
-func (r *ProductRepo) GetAll() ([]models.Product, error) {
+func (r *ProductRepo) GetAll(limit, offset int) ([]models.Product, int, error) {
+	var total int
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM items WHERE deleted_at IS NULL`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("error counting products: %v", err)
+	}
+
 	query := `
 		SELECT id, name, description, price, stock, created_at, updated_at
 		FROM items
 		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
 	`
-	rows, err := r.db.Query(query)
+	rows, err := r.db.Query(query, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("error querying products: %v", err)
+		return nil, 0, fmt.Errorf("error querying products: %v", err)
 	}
 	defer rows.Close()
 
@@ -35,14 +41,14 @@ func (r *ProductRepo) GetAll() ([]models.Product, error) {
 	for rows.Next() {
 		var p models.Product
 		if err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("error scanning product: %v", err)
+			return nil, 0, fmt.Errorf("error scanning product: %v", err)
 		}
 		products = append(products, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating products: %v", err)
+		return nil, 0, fmt.Errorf("error iterating products: %v", err)
 	}
-	return products, nil
+	return products, total, nil
 }
 
 func (r *ProductRepo) GetByID(id uuid.UUID) (models.Product, error) {

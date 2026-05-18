@@ -129,6 +129,32 @@ The server starts at `http://localhost:<API_PORT>`.
 | `make migrate-up` | Apply all pending migrations |
 | `make migrate-down` | Rollback the last migration |
 
+## Running with Docker
+
+**Prerequisites:** Docker, Docker Compose
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env — set DB_HOST=db to match the compose service name
+
+# 2. Start the database and API
+docker compose up --build
+
+# 3. Run migrations (first time only)
+docker compose --profile tools run --rm migrate
+```
+
+> **Note:** The API container mounts `.env` as a read-only volume (`/app/.env`) so the application can load it via godotenv. When `DB_HOST` is set to `db`, it resolves to the PostgreSQL container defined in `docker-compose.yml`.
+
+### Docker Compose Services
+
+| Service | Description |
+|---|---|
+| `db` | PostgreSQL 17 with health check and named volume |
+| `api` | Multi-stage Go build (builder: `golang:1.24-alpine`, runtime: `alpine:3.21`) |
+| `migrate` | One-off migration runner (`migrate/migrate`), enabled via `--profile tools` |
+
 ## API Endpoints
 
 Base path: `/api/v{API_VERSION}`

@@ -1,0 +1,2 @@
+ALTER TABLE order_items
+ADD COLUMN subtotal DECIMAL NOT NULL DEFAULT 0;

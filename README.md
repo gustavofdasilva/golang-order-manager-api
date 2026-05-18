@@ -155,6 +155,10 @@ docker compose --profile tools run --rm migrate
 | `api` | Multi-stage Go build (builder: `golang:1.24-alpine`, runtime: `alpine:3.21`) |
 | `migrate` | One-off migration runner (`migrate/migrate`), enabled via `--profile tools` |
 
+## Diagrams
+
+- [Authentication flow](docs/auth-flow.md) — register, login, token refresh, logout, session lifecycle
+
 ## API Endpoints
 
 Base path: `/api/v{API_VERSION}`

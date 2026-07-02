@@ -27,6 +27,12 @@ var (
 	RATE_LIMIT_RPS                   float64
 	RATE_LIMIT_BURST                 int
 	RATE_LIMIT_EXPIRES_MINUTES       int
+
+	REDIS_HOST                       string
+	REDIS_PORT                       string
+	REDIS_PASS                       string
+	REDIS_DB                         int
+	REDIS_DEFAULT_EXPIRATION_MINUTES = 5
 )
 
 func InitConfig() {
@@ -90,6 +96,21 @@ func InitConfig() {
 		RATE_LIMIT_EXPIRES_MINUTES = 3 // default to 3 minutes
 	}
 
+	REDIS_HOST = os.Getenv("REDIS_HOST")
+	REDIS_PORT = os.Getenv("REDIS_PORT")
+	REDIS_PASS = os.Getenv("REDIS_PASS")
+	REDIS_DB, err = strconv.Atoi(os.Getenv("REDIS_DB"))
+	if err != nil {
+		slog.Error("Error parsing REDIS_DB", "err", err)
+		REDIS_DB = 0 // default to DB 0
+	}
+
+	REDIS_DEFAULT_EXPIRATION_MINUTES, err = strconv.Atoi(os.Getenv("REDIS_DEFAULT_EXPIRATION_MINUTES"))
+	if err != nil {
+		slog.Error("Error parsing REDIS_DEFAULT_EXPIRATION_MINUTES", "err", err)
+		REDIS_DEFAULT_EXPIRATION_MINUTES = 5 // default to 5 minutes
+	}
+
 	LogEnv()
 }
 
@@ -109,4 +130,9 @@ func LogEnv() {
 	slog.Info("RATE_LIMIT_RPS", "value", RATE_LIMIT_RPS)
 	slog.Info("RATE_LIMIT_BURST", "value", RATE_LIMIT_BURST)
 	slog.Info("RATE_LIMIT_EXPIRES_MINUTES", "value", RATE_LIMIT_EXPIRES_MINUTES)
+	slog.Info("REDIS_HOST", "value", REDIS_HOST)
+	slog.Info("REDIS_PORT", "value", REDIS_PORT)
+	slog.Info("REDIS_PASS", "value", REDIS_PASS)
+	slog.Info("REDIS_DB", "value", REDIS_DB)
+	slog.Info("REDIS_DEFAULT_EXPIRATION_MINUTES", "value", REDIS_DEFAULT_EXPIRATION_MINUTES)
 }

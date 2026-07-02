@@ -6,6 +6,7 @@ import (
 	"golang-order-manager-api/internal/handlers"
 	"golang-order-manager-api/internal/middleware"
 	"golang-order-manager-api/internal/router"
+	"golang-order-manager-api/pkg/cache"
 	"golang-order-manager-api/pkg/database"
 	"golang-order-manager-api/pkg/logger"
 	"strings"
@@ -27,6 +28,7 @@ func main() {
 	logger.Init()
 	config.InitConfig()
 	database.InitDB()
+	cache.InitRedis()
 	e := echo.New()
 
 	api := e.Group(fmt.Sprintf("/api/v%s", config.API_VERSION))
@@ -41,5 +43,5 @@ func main() {
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	port := strings.TrimLeft(config.API_PORT, ":")
-	e.Logger.Fatal(e.Start(fmt.Sprintf("127.0.0.1:%s", port)))
+	e.Logger.Fatal(e.Start(fmt.Sprintf("0.0.0.0:%s", port)))
 }

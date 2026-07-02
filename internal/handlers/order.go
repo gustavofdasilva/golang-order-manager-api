@@ -11,6 +11,7 @@ import (
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
+	"golang-order-manager-api/pkg/cache"
 	"golang-order-manager-api/pkg/database"
 
 	"github.com/google/uuid"
@@ -44,7 +45,10 @@ func ListOrders(c echo.Context) error {
 	filter := parseOrderFilter(c)
 
 	db := database.GetDB()
-	orderService := services.NewOrderService(db)
+
+	orderCache := cache.NewRedisOrderCache()
+
+	orderService := services.NewOrderService(db, orderCache)
 
 	orders, total, err := orderService.GetAllByUserID(userID, page, limit, filter)
 	if err != nil {
@@ -79,7 +83,6 @@ func ListOrders(c echo.Context) error {
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders/{id} [get]
 func GetOrder(c echo.Context) error {
-	userID := c.Get("userID").(uuid.UUID)
 
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -87,10 +90,11 @@ func GetOrder(c echo.Context) error {
 	}
 
 	db := database.GetDB()
+	orderCache := cache.NewRedisOrderCache()
 
-	orderService := services.NewOrderService(db)
+	orderService := services.NewOrderService(db, orderCache)
 
-	order, err := orderService.GetByID(orderID, userID)
+	order, err := orderService.GetByID(orderID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrOrderNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
@@ -133,8 +137,9 @@ func CreateOrder(c echo.Context) error {
 	}
 
 	db := database.GetDB()
+	orderCache := cache.NewRedisOrderCache()
 
-	orderService := services.NewOrderService(db)
+	orderService := services.NewOrderService(db, orderCache)
 
 	order, err := orderService.CreateOrder(userID, inputs)
 	if err != nil {
@@ -186,8 +191,8 @@ func UpdateOrderStatus(c echo.Context) error {
 	newStatus := models.OrderStatus(req.Status)
 
 	db := database.GetDB()
-
-	orderService := services.NewOrderService(db)
+	orderCache := cache.NewRedisOrderCache()
+	orderService := services.NewOrderService(db, orderCache)
 
 	order, err := orderService.UpdateStatus(orderID, userID, newStatus)
 	if err != nil {

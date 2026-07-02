@@ -57,14 +57,14 @@ func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderF
 	return orders, total, nil
 }
 
-func (r *OrderRepo) GetByIDAndUserID(orderID, userID uuid.UUID) (models.Order, error) {
+func (r *OrderRepo) GetByID(orderID uuid.UUID) (models.Order, error) {
 	query := `
 		SELECT id, user_id, status, total_amount, created_at, updated_at
 		FROM orders
-		WHERE id = $1 AND user_id = $2
+		WHERE id = $1	
 	`
 	var o models.Order
-	err := r.db.QueryRow(query, orderID, userID).
+	err := r.db.QueryRow(query, orderID).
 		Scan(&o.ID, &o.UserID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {

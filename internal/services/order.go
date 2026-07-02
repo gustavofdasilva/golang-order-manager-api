@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -11,17 +12,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type OrderCache interface {
+	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
+	SetOrder(ctx context.Context, order models.Order) error
+	DeleteOrder(ctx context.Context, id uuid.UUID) error
+}
+
 type OrderItemInput struct {
 	ProductID uuid.UUID
 	Quantity  int
 }
 
 type OrderService struct {
-	db *sql.DB
+	db    *sql.DB
+	cache OrderCache
 }
 
-func NewOrderService(db *sql.DB) *OrderService {
-	return &OrderService{db: db}
+func NewOrderService(db *sql.DB, cache OrderCache) *OrderService {
+	return &OrderService{db: db, cache: cache}
 }
 
 func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter repository.OrderFilter) ([]models.Order, int, error) {
@@ -30,9 +38,18 @@ func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter 
 	return repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
-func (s *OrderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
+func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
+	order, err := s.cache.GetOrder(context.Background(), orderID)
+	if err == nil && order.ID != uuid.Nil {
+		return order, nil
+	}
+
 	repo := repository.NewOrderRepo(s.db)
-	return repo.GetByIDAndUserID(orderID, userID)
+	order, err = repo.GetByID(orderID)
+
+	s.cache.SetOrder(context.Background(), order)
+
+	return order, err
 }
 
 func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error) {
@@ -113,7 +130,7 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	orderRepo := repository.NewOrderRepo(tx)
 	productRepo := repository.NewProductRepo(tx)
 
-	order, err := orderRepo.GetByIDAndUserID(orderID, userID)
+	order, err := orderRepo.GetByID(orderID)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -137,6 +154,8 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	if err := orderRepo.UpdateStatus(orderID, newStatus); err != nil {
 		return models.Order{}, err
 	}
+
+	s.cache.DeleteOrder(context.Background(), orderID)
 
 	if err := tx.Commit(); err != nil {
 		return models.Order{}, fmt.Errorf("error committing transaction: %v", err)

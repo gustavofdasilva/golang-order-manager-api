@@ -12,13 +12,13 @@ import (
 )
 
 type AuthService struct {
-	userRepo             *repository.UserRepo
-	authRepo             *repository.AuthRepo
+	userRepo             repository.UserRepository
+	authRepo             repository.AuthRepository
 	refreshTokenDuration time.Duration
 	jwtSecret            string
 }
 
-func NewAuthService(userRepo *repository.UserRepo, authRepo *repository.AuthRepo, jwtSecret string, refreshTokenDuration time.Duration) *AuthService {
+func NewAuthService(userRepo repository.UserRepository, authRepo repository.AuthRepository, jwtSecret string, refreshTokenDuration time.Duration) *AuthService {
 	return &AuthService{
 		userRepo:             userRepo,
 		authRepo:             authRepo,

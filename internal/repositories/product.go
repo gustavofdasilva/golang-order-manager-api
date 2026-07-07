@@ -17,12 +17,22 @@ type ProductFilter struct {
 	InStock  *bool
 }
 
+type ProductRepository interface {
+	GetAll(limit, offset int, f ProductFilter) ([]models.Product, int, error)
+	GetByID(id uuid.UUID) (models.Product, error)
+	Create(p models.Product) (models.Product, error)
+	Update(id uuid.UUID, name, description string, price *float64, stock *int) (models.Product, error)
+	Delete(id uuid.UUID) error
+	DecrementStock(productID uuid.UUID, quantity int) error
+	IncrementStock(productID uuid.UUID, quantity int) error
+}
+
 type ProductRepo struct {
 	db DBTX
 }
 
-func NewProductRepo(db DBTX) ProductRepo {
-	return ProductRepo{db: db}
+func NewProductRepo(db DBTX) ProductRepository {
+	return &ProductRepo{db: db}
 }
 
 func (r *ProductRepo) GetAll(limit, offset int, f ProductFilter) ([]models.Product, int, error) {

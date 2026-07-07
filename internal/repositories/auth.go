@@ -9,12 +9,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type AuthRepository interface {
+	SaveRefreshToken(userID uuid.UUID, refreshToken string, expiresAt time.Time) error
+	GetRefreshToken(refreshToken string) (uuid.UUID, time.Time, time.Time, error)
+	RevokeRefreshToken(refreshToken string) error
+	RevokeAllRefreshTokens(userID uuid.UUID) error
+}
+
 type AuthRepo struct {
 	db *sql.DB
 }
 
-func NewAuthRepo(db *sql.DB) AuthRepo {
-	return AuthRepo{db: db}
+func NewAuthRepo(db *sql.DB) AuthRepository {
+	return &AuthRepo{db: db}
 }
 
 func (repo *AuthRepo) SaveRefreshToken(userID uuid.UUID, refreshToken string, expiresAt time.Time) error {

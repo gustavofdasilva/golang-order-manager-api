@@ -46,7 +46,7 @@ func UpdateUser(c echo.Context) error {
 	db := database.GetDB()
 
 	repo := repository.NewUserRepo(db)
-	userService := services.NewUserService(&repo)
+	userService := services.NewUserService(repo)
 
 	updatedUser, err := userService.Update(user)
 	if err != nil {
@@ -92,7 +92,7 @@ func DeleteUser(c echo.Context) error {
 	db := database.GetDB()
 
 	repo := repository.NewUserRepo(db)
-	userService := services.NewUserService(&repo)
+	userService := services.NewUserService(repo)
 
 	err := userService.Delete(userID)
 	if err != nil {
@@ -124,7 +124,7 @@ func GetUserInfo(c echo.Context) error {
 	db := database.GetDB()
 
 	repoUser := repository.NewUserRepo(db)
-	userService := services.NewUserService(&repoUser)
+	userService := services.NewUserService(repoUser)
 
 	user, err := userService.GetByID(userID)
 	if err != nil {

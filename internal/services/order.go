@@ -165,7 +165,8 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	return order, nil
 }
 
-func decrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+// TODO: Decrementing stock for items should be done in a more efficient way, possibly in a single query or using batch updates. This is a simple implementation for demonstration purposes.
+func decrementStockForItems(productRepo repository.ProductRepository, items []models.OrderItem) error {
 	for _, item := range items {
 		if err := productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
 			return err
@@ -174,7 +175,8 @@ func decrementStockForItems(productRepo repository.ProductRepo, items []models.O
 	return nil
 }
 
-func incrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+// TODO: Increment stock for items should be done in a more efficient way, possibly in a single query or using batch updates. This is a simple implementation for demonstration purposes.
+func incrementStockForItems(productRepo repository.ProductRepository, items []models.OrderItem) error {
 	for _, item := range items {
 		if err := productRepo.IncrementStock(item.ProductID, item.Quantity); err != nil {
 			return err

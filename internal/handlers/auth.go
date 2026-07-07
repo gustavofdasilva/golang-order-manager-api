@@ -48,7 +48,7 @@ func Register(c echo.Context) error {
 
 	repo := repository.NewUserRepo(db)
 
-	authService := auth.NewAuthService(&repo, nil, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	authService := auth.NewAuthService(repo, nil, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
 	_, err := authService.Register(req.Username, req.Email, req.Password)
 	if err != nil {
@@ -98,7 +98,7 @@ func Login(c echo.Context) error {
 	repoUser := repository.NewUserRepo(db)
 	repoAuth := repository.NewAuthRepo(db)
 
-	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
 	token, refreshToken, user, err := authService.Login(req.Email, req.Password)
 	if err != nil {
@@ -153,7 +153,7 @@ func RefreshToken(c echo.Context) error {
 	repoUser := repository.NewUserRepo(db)
 	repoAuth := repository.NewAuthRepo(db)
 
-	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
 	token, newRefreshToken, user, err := authService.Refresh(req.RefreshToken)
 	if err != nil {
@@ -205,7 +205,7 @@ func Logout(c echo.Context) error {
 	repoUser := repository.NewUserRepo(db)
 	repoAuth := repository.NewAuthRepo(db)
 
-	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
 	err := authService.Logout(req.RefreshToken)
 	if err != nil {
@@ -238,7 +238,7 @@ func LogoutAll(c echo.Context) error {
 	repoUser := repository.NewUserRepo(db)
 	repoAuth := repository.NewAuthRepo(db)
 
-	authService := auth.NewAuthService(&repoUser, &repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
 
 	err := authService.LogoutAll(userID)
 	if err != nil {

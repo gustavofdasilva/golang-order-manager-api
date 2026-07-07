@@ -9,12 +9,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserRepository interface {
+	GetByEmail(email string) (user models.User, err error)
+	GetByID(id uuid.UUID) (user models.User, err error)
+	CreateUser(user models.User) (models.User, error)
+	DeleteUserByID(id uuid.UUID) (err error)
+	UpdateUser(user models.User) (err error)
+	IsEmailAlreadyInUse(email string, excludedID *uuid.UUID) (exists bool, err error)
+	IsUsernameAlreadyInUse(username string, excludedID *uuid.UUID) (exists bool, err error)
+}
+
 type UserRepo struct {
 	db *sql.DB
 }
 
-func NewUserRepo(db *sql.DB) UserRepo {
-	return UserRepo{db: db}
+func NewUserRepo(db *sql.DB) UserRepository {
+	return &UserRepo{db: db}
 }
 
 func (repo *UserRepo) GetByEmail(email string) (user models.User, err error) {

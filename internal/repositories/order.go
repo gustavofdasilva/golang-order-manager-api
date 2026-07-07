@@ -14,12 +14,20 @@ type OrderFilter struct {
 	Status *string
 }
 
+type OrderRepository interface {
+	GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderFilter) ([]models.Order, int, error)
+	GetByID(orderID uuid.UUID) (models.Order, error)
+	Create(o models.Order) (models.Order, error)
+	CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]models.OrderItem, error)
+	UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error
+}
+
 type OrderRepo struct {
 	db DBTX
 }
 
-func NewOrderRepo(db DBTX) OrderRepo {
-	return OrderRepo{db: db}
+func NewOrderRepo(db DBTX) OrderRepository {
+	return &OrderRepo{db: db}
 }
 
 func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderFilter) ([]models.Order, int, error) {

@@ -71,7 +71,7 @@ func ListProducts(c echo.Context) error {
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(&repo)
+	productService := services.NewProductService(repo)
 
 	products, total, err := productService.GetAll(page, limit, filter)
 	if err != nil {
@@ -119,7 +119,7 @@ func GetProduct(c echo.Context) error {
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(&repo)
+	productService := services.NewProductService(repo)
 
 	product, err := productService.GetByID(id)
 	if err != nil {
@@ -163,7 +163,7 @@ func CreateProduct(c echo.Context) error {
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(&repo)
+	productService := services.NewProductService(repo)
 
 	product, err := productService.Create(models.Product{
 		Name:        req.Name,
@@ -215,7 +215,7 @@ func UpdateProduct(c echo.Context) error {
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(&repo)
+	productService := services.NewProductService(repo)
 
 	product, err := productService.Update(id, req.Name, req.Description, req.Price, req.Stock)
 	if err != nil {
@@ -259,7 +259,7 @@ func DeleteProduct(c echo.Context) error {
 
 	db := database.GetDB()
 	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(&repo)
+	productService := services.NewProductService(repo)
 
 	if err := productService.Delete(id); err != nil {
 		if errors.Is(err, error_codes.ErrProductNotFound) {

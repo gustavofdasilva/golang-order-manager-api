@@ -107,6 +107,7 @@ func (r *ProductRepo) Create(p models.Product) (models.Product, error) {
 	return p, nil
 }
 
+// ! Update should receive models.Product instead of individual fields, but for now we keep it as is to match the service layer.
 func (r *ProductRepo) Update(id uuid.UUID, name, description string, price *float64, stock *int) (models.Product, error) {
 	query := `
 		UPDATE items

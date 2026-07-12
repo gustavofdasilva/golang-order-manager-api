@@ -27,6 +27,7 @@ func NewAuthService(userRepo repository.UserRepository, authRepo repository.Auth
 	}
 }
 
+// ? Should CreateUser be part of AuthService or UserService? I think it should be part of UserService, but for now, I'll leave it here.
 func (s *AuthService) Register(username string, email string, password string) (models.User, error) {
 	exists, err := s.userRepo.IsEmailAlreadyInUse(email, nil)
 	if err != nil {

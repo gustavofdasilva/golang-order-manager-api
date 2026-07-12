@@ -18,8 +18,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func parseOrderFilter(c echo.Context) repository.OrderFilter {
-	f := repository.OrderFilter{}
+func parseOrderFilter(c echo.Context) models.OrderFilter {
+	f := models.OrderFilter{}
 	if v := c.QueryParam("status"); v != "" {
 		f.Status = &v
 	}

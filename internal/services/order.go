@@ -11,12 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrderCache interface {
-	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
-	SetOrder(ctx context.Context, order models.Order) error
-	DeleteOrder(ctx context.Context, id uuid.UUID) error
-}
-
 type OrderItemInput struct {
 	ProductID uuid.UUID
 	Quantity  int
@@ -25,14 +19,14 @@ type OrderItemInput struct {
 type OrderService struct {
 	txFactory repository.OrderTxFactory
 	repo      repository.OrderRepository
-	cache     OrderCache
+	cache     repository.OrderCache
 }
 
-func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache OrderCache) *OrderService {
+func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache repository.OrderCache) *OrderService {
 	return &OrderService{txFactory: txFactory, repo: repo, cache: cache}
 }
 
-func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter repository.OrderFilter) ([]models.Order, int, error) {
+func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error) {
 	offset := (page - 1) * limit
 	return s.repo.GetAllByUserID(userID, limit, offset, filter)
 }

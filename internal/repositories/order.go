@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -10,12 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrderFilter struct {
-	Status *string
+type OrderCache interface {
+	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
+	SetOrder(ctx context.Context, order models.Order) error
+	DeleteOrder(ctx context.Context, id uuid.UUID) error
 }
 
 type OrderRepository interface {
-	GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderFilter) ([]models.Order, int, error)
+	GetAllByUserID(userID uuid.UUID, limit, offset int, f models.OrderFilter) ([]models.Order, int, error)
 	GetByID(orderID uuid.UUID) (models.Order, error)
 	Create(o models.Order) (models.Order, error)
 	CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]models.OrderItem, error)
@@ -30,7 +33,7 @@ func NewOrderRepo(db DBTX) OrderRepository {
 	return &OrderRepo{db: db}
 }
 
-func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f OrderFilter) ([]models.Order, int, error) {
+func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f models.OrderFilter) ([]models.Order, int, error) {
 	var total int
 	countQuery := `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND ($2::text IS NULL OR status = $2)`
 	if err := r.db.QueryRow(countQuery, userID, f.Status).Scan(&total); err != nil {

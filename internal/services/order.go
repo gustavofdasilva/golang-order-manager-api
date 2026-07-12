@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	error_codes "golang-order-manager-api/internal/errors"
@@ -24,18 +23,18 @@ type OrderItemInput struct {
 }
 
 type OrderService struct {
-	db    *sql.DB
-	cache OrderCache
+	txFactory repository.OrderTxFactory
+	repo      repository.OrderRepository
+	cache     OrderCache
 }
 
-func NewOrderService(db *sql.DB, cache OrderCache) *OrderService {
-	return &OrderService{db: db, cache: cache}
+func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache OrderCache) *OrderService {
+	return &OrderService{txFactory: txFactory, repo: repo, cache: cache}
 }
 
 func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter repository.OrderFilter) ([]models.Order, int, error) {
-	repo := repository.NewOrderRepo(s.db)
 	offset := (page - 1) * limit
-	return repo.GetAllByUserID(userID, limit, offset, filter)
+	return s.repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
 func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
@@ -44,8 +43,7 @@ func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
 		return order, nil
 	}
 
-	repo := repository.NewOrderRepo(s.db)
-	order, err = repo.GetByID(orderID)
+	order, err = s.repo.GetByID(orderID)
 
 	s.cache.SetOrder(context.Background(), order)
 
@@ -57,14 +55,11 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 		return models.Order{}, error_codes.ErrOrderEmpty
 	}
 
-	tx, err := s.db.Begin()
+	tx, err := s.txFactory.BeginTx(context.Background())
 	if err != nil {
 		return models.Order{}, fmt.Errorf("error beginning transaction: %v", err)
 	}
 	defer tx.Rollback()
-
-	productRepo := repository.NewProductRepo(tx)
-	orderRepo := repository.NewOrderRepo(tx)
 
 	var orderItems []models.OrderItem
 	total := 0.0
@@ -74,7 +69,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 			return models.Order{}, error_codes.ErrInvalidQuantity
 		}
 
-		product, err := productRepo.GetByID(input.ProductID)
+		product, err := tx.ProductRepository().GetByID(input.ProductID)
 		if err != nil {
 			return models.Order{}, err
 		}
@@ -94,7 +89,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 		})
 	}
 
-	order, err := orderRepo.Create(models.Order{
+	order, err := tx.OrderRepository().Create(models.Order{
 		UserID:      userID,
 		Status:      models.OrderStatusPending,
 		TotalAmount: total,
@@ -103,7 +98,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 		return models.Order{}, err
 	}
 
-	createdItems, err := orderRepo.CreateItems(order.ID, orderItems)
+	createdItems, err := tx.OrderRepository().CreateItems(order.ID, orderItems)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -121,16 +116,13 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 		return models.Order{}, error_codes.ErrInvalidOrderStatus
 	}
 
-	tx, err := s.db.Begin()
+	tx, err := s.txFactory.BeginTx(context.Background())
 	if err != nil {
 		return models.Order{}, fmt.Errorf("error beginning transaction: %v", err)
 	}
 	defer tx.Rollback()
 
-	orderRepo := repository.NewOrderRepo(tx)
-	productRepo := repository.NewProductRepo(tx)
-
-	order, err := orderRepo.GetByID(orderID)
+	order, err := tx.OrderRepository().GetByID(orderID)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -140,18 +132,18 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	}
 
 	if newStatus == models.OrderStatusPaid {
-		if err := decrementStockForItems(productRepo, order.Items); err != nil {
+		if err := decrementStockForItems(tx.ProductRepository(), order.Items); err != nil {
 			return models.Order{}, err
 		}
 	}
 
 	if newStatus == models.OrderStatusCancelled && order.Status == models.OrderStatusPaid {
-		if err := incrementStockForItems(productRepo, order.Items); err != nil {
+		if err := incrementStockForItems(tx.ProductRepository(), order.Items); err != nil {
 			return models.Order{}, err
 		}
 	}
 
-	if err := orderRepo.UpdateStatus(orderID, newStatus); err != nil {
+	if err := tx.OrderRepository().UpdateStatus(orderID, newStatus); err != nil {
 		return models.Order{}, err
 	}
 

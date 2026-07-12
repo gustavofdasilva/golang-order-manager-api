@@ -48,7 +48,10 @@ func ListOrders(c echo.Context) error {
 
 	orderCache := cache.NewRedisOrderCache()
 
-	orderService := services.NewOrderService(db, orderCache)
+	txFactory := repository.NewTxFactory(db)
+	orderRepo := repository.NewOrderRepo(db)
+
+	orderService := services.NewOrderService(txFactory, orderRepo, orderCache)
 
 	orders, total, err := orderService.GetAllByUserID(userID, page, limit, filter)
 	if err != nil {
@@ -90,9 +93,13 @@ func GetOrder(c echo.Context) error {
 	}
 
 	db := database.GetDB()
+
 	orderCache := cache.NewRedisOrderCache()
 
-	orderService := services.NewOrderService(db, orderCache)
+	txFactory := repository.NewTxFactory(db)
+	orderRepo := repository.NewOrderRepo(db)
+
+	orderService := services.NewOrderService(txFactory, orderRepo, orderCache)
 
 	order, err := orderService.GetByID(orderID)
 	if err != nil {
@@ -137,9 +144,13 @@ func CreateOrder(c echo.Context) error {
 	}
 
 	db := database.GetDB()
+
 	orderCache := cache.NewRedisOrderCache()
 
-	orderService := services.NewOrderService(db, orderCache)
+	txFactory := repository.NewTxFactory(db)
+	orderRepo := repository.NewOrderRepo(db)
+
+	orderService := services.NewOrderService(txFactory, orderRepo, orderCache)
 
 	order, err := orderService.CreateOrder(userID, inputs)
 	if err != nil {
@@ -191,8 +202,13 @@ func UpdateOrderStatus(c echo.Context) error {
 	newStatus := models.OrderStatus(req.Status)
 
 	db := database.GetDB()
+
 	orderCache := cache.NewRedisOrderCache()
-	orderService := services.NewOrderService(db, orderCache)
+
+	txFactory := repository.NewTxFactory(db)
+	orderRepo := repository.NewOrderRepo(db)
+
+	orderService := services.NewOrderService(txFactory, orderRepo, orderCache)
 
 	order, err := orderService.UpdateStatus(orderID, userID, newStatus)
 	if err != nil {

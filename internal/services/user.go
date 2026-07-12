@@ -5,7 +5,6 @@ import (
 	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/security"
-	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -71,7 +70,6 @@ func (s *UserService) GetByID(id uuid.UUID) (models.User, error) {
 
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
-		slog.Error("Failed to get user by ID", slog.Any("err", err), slog.Any("userID", id))
 		return models.User{}, err
 	}
 

@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -20,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- setup ---
-
 type userHandlerMocks struct {
 	userService *svcmocks.MockUserService
 }
@@ -34,7 +31,6 @@ func makeUserHandler(t *testing.T) (*handlers.UserHandler, *userHandlerMocks) {
 	return h, m
 }
 
-// helper: monta contexto Echo com userID já injetado (simula middleware de auth)
 func newEchoContext(method, path, body string, userID uuid.UUID) (echo.Context, *httptest.ResponseRecorder) {
 	e := echo.New()
 	var req *http.Request
@@ -49,17 +45,6 @@ func newEchoContext(method, path, body string, userID uuid.UUID) (echo.Context, 
 	c.Set("userID", userID)
 	return c, rec
 }
-
-// helper: deserializa o body da resposta
-func parseBody(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
-	t.Helper()
-	var body map[string]any
-	err := json.Unmarshal(rec.Body.Bytes(), &body)
-	require.NoError(t, err)
-	return body
-}
-
-// --- GetUserInfo ---
 
 func TestGetUserInfo_Success(t *testing.T) {
 	h, m := makeUserHandler(t)
@@ -106,8 +91,6 @@ func TestGetUserInfo_InternalError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
-
-// --- UpdateUser ---
 
 func TestUpdateUser_Success(t *testing.T) {
 	h, m := makeUserHandler(t)
@@ -193,8 +176,6 @@ func TestUpdateUser_InternalError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
-
-// --- DeleteUser ---
 
 func TestDeleteUser_Success(t *testing.T) {
 	h, m := makeUserHandler(t)

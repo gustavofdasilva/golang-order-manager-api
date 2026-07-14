@@ -22,7 +22,7 @@ type orderServiceMocks struct {
 	cache       *repomocks.MockOrderCache
 }
 
-func makeOrderService(t *testing.T) (*services.OrderService, *orderServiceMocks) {
+func makeOrderService(t *testing.T) (services.OrderService, *orderServiceMocks) {
 	m := &orderServiceMocks{
 		txFactory:   repomocks.NewMockOrderTxFactory(t),
 		orderTx:     repomocks.NewMockOrderTx(t),

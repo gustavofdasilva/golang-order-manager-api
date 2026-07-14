@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeProductService(t *testing.T) (*services.ProductService, *repomocks.MockProductRepository) {
+func makeProductService(t *testing.T) (services.ProductService, *repomocks.MockProductRepository) {
 	mockRepo := repomocks.NewMockProductRepository(t)
 	svc := services.NewProductService(mockRepo)
 	return svc, mockRepo

@@ -5,16 +5,22 @@ import (
 	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
-	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
-	"golang-order-manager-api/pkg/database"
 	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
+
+type UserHandler struct {
+	userService services.UserService // interface, não struct concreta
+}
+
+func NewUserHandler(userService services.UserService) *UserHandler {
+	return &UserHandler{userService: userService}
+}
 
 // UpdateUser godoc
 //
@@ -30,7 +36,7 @@ import (
 // @Failure 409 {object} responses.ErrorResponse "Email or username already in use"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/me [patch]
-func UpdateUser(c echo.Context) error {
+func (h *UserHandler) UpdateUser(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 	req := dto.UpdateUserRequest{}
 
@@ -43,12 +49,7 @@ func UpdateUser(c echo.Context) error {
 		Password: req.Password,
 	}
 
-	db := database.GetDB()
-
-	repo := repository.NewUserRepo(db)
-	userService := services.NewUserService(repo)
-
-	updatedUser, err := userService.Update(user)
+	updatedUser, err := h.userService.Update(user)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrEmailAlreadyInUse) {
 			return responses.Error(c, http.StatusConflict, err)
@@ -86,15 +87,10 @@ func UpdateUser(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "User not found"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/me [delete]
-func DeleteUser(c echo.Context) error {
+func (h *UserHandler) DeleteUser(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
-	db := database.GetDB()
-
-	repo := repository.NewUserRepo(db)
-	userService := services.NewUserService(repo)
-
-	err := userService.Delete(userID)
+	err := h.userService.Delete(userID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrUserNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
@@ -118,15 +114,10 @@ func DeleteUser(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "User not found"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /users/me [get]
-func GetUserInfo(c echo.Context) error {
+func (h *UserHandler) GetUserInfo(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
-	db := database.GetDB()
-
-	repoUser := repository.NewUserRepo(db)
-	userService := services.NewUserService(repoUser)
-
-	user, err := userService.GetByID(userID)
+	user, err := h.userService.GetByID(userID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrUserNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)

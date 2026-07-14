@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeUserService(t *testing.T) (*services.UserService, *repomocks.MockUserRepository) {
+func makeUserService(t *testing.T) (services.UserService, *repomocks.MockUserRepository) {
 	mockRepo := repomocks.NewMockUserRepository(t)
 	svc := services.NewUserService(mockRepo)
 	return svc, mockRepo

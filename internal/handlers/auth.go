@@ -2,20 +2,24 @@ package handlers
 
 import (
 	"errors"
-	"golang-order-manager-api/internal/config"
 	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
-	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
-	auth "golang-order-manager-api/internal/services"
-	"golang-order-manager-api/pkg/database"
+	"golang-order-manager-api/internal/services"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
+
+type AuthHandler struct {
+	authService services.AuthService
+}
+
+func NewAuthHandler(authService services.AuthService) *AuthHandler {
+	return &AuthHandler{authService: authService}
+}
 
 // Register godoc
 //
@@ -29,7 +33,7 @@ import (
 // @Failure 400 {object} responses.ErrorResponse "Invalid fields or email/username already in use"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
-func Register(c echo.Context) error {
+func (h *AuthHandler) Register(c echo.Context) error {
 	req := dto.RegisterRequest{}
 
 	c.Bind(&req)
@@ -44,13 +48,7 @@ func Register(c echo.Context) error {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidUsername)
 	}
 
-	db := database.GetDB()
-
-	repo := repository.NewUserRepo(db)
-
-	authService := auth.NewAuthService(repo, nil, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
-
-	_, err := authService.Register(req.Username, req.Email, req.Password)
+	_, err := h.authService.Register(req.Username, req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrEmailAlreadyInUse) {
 			return responses.Error(c, http.StatusBadRequest, err)
@@ -81,7 +79,7 @@ func Register(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "User not found"
 // @Failure 500 {object} responses.ErrorResponse "Internal server error"
 // @Router /auth/login [post]
-func Login(c echo.Context) error {
+func (h *AuthHandler) Login(c echo.Context) error {
 	req := dto.LoginRequest{}
 
 	c.Bind(&req)
@@ -93,14 +91,7 @@ func Login(c echo.Context) error {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidPassword)
 	}
 
-	db := database.GetDB()
-
-	repoUser := repository.NewUserRepo(db)
-	repoAuth := repository.NewAuthRepo(db)
-
-	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
-
-	token, refreshToken, user, err := authService.Login(req.Email, req.Password)
+	token, refreshToken, user, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrInvalidCredentials) {
 			return responses.Error(c, http.StatusUnauthorized, err)
@@ -139,7 +130,7 @@ func Login(c echo.Context) error {
 // @Failure 400 {object} responses.ErrorResponse "Missing refresh token"
 // @Failure 401 {object} responses.ErrorResponse "Invalid, expired, or not found refresh token"
 // @Router /auth/refresh [post]
-func RefreshToken(c echo.Context) error {
+func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	req := dto.RefreshTokenRequest{}
 
 	c.Bind(&req)
@@ -148,14 +139,7 @@ func RefreshToken(c echo.Context) error {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidRefreshToken)
 	}
 
-	db := database.GetDB()
-
-	repoUser := repository.NewUserRepo(db)
-	repoAuth := repository.NewAuthRepo(db)
-
-	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
-
-	token, newRefreshToken, user, err := authService.Refresh(req.RefreshToken)
+	token, newRefreshToken, user, err := h.authService.Refresh(req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)
@@ -191,7 +175,7 @@ func RefreshToken(c echo.Context) error {
 // @Failure 400 {object} responses.ErrorResponse "Missing refresh token"
 // @Failure 401 {object} responses.ErrorResponse "Invalid, expired, or not found refresh token"
 // @Router /auth/logout [post]
-func Logout(c echo.Context) error {
+func (h *AuthHandler) Logout(c echo.Context) error {
 	req := dto.RefreshTokenRequest{}
 
 	c.Bind(&req)
@@ -200,14 +184,7 @@ func Logout(c echo.Context) error {
 		return responses.Error(c, http.StatusBadRequest, error_codes.ErrInvalidRefreshToken)
 	}
 
-	db := database.GetDB()
-
-	repoUser := repository.NewUserRepo(db)
-	repoAuth := repository.NewAuthRepo(db)
-
-	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
-
-	err := authService.Logout(req.RefreshToken)
+	err := h.authService.Logout(req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)
@@ -230,17 +207,10 @@ func Logout(c echo.Context) error {
 // @Success 200 {object} responses.SuccessResponse "Logout successful"
 // @Failure 401 {object} responses.ErrorResponse "Unauthorized or invalid session"
 // @Router /auth/logout-all [post]
-func LogoutAll(c echo.Context) error {
+func (h *AuthHandler) LogoutAll(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
-	db := database.GetDB()
-
-	repoUser := repository.NewUserRepo(db)
-	repoAuth := repository.NewAuthRepo(db)
-
-	authService := auth.NewAuthService(repoUser, repoAuth, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
-
-	err := authService.LogoutAll(userID)
+	err := h.authService.LogoutAll(userID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrRefreshTokenNotFound) || errors.Is(err, error_codes.ErrInvalidRefreshToken) || errors.Is(err, error_codes.ErrRefreshTokenExpired) {
 			return responses.Error(c, http.StatusUnauthorized, err)

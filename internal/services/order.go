@@ -16,22 +16,29 @@ type OrderItemInput struct {
 	Quantity  int
 }
 
-type OrderService struct {
+type OrderService interface {
+	GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error)
+	GetByID(orderID uuid.UUID) (models.Order, error)
+	CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error)
+	UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error)
+}
+
+type orderService struct {
 	txFactory repository.OrderTxFactory
 	repo      repository.OrderRepository
 	cache     repository.OrderCache
 }
 
-func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache repository.OrderCache) *OrderService {
-	return &OrderService{txFactory: txFactory, repo: repo, cache: cache}
+func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache repository.OrderCache) OrderService {
+	return &orderService{txFactory: txFactory, repo: repo, cache: cache}
 }
 
-func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error) {
+func (s *orderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error) {
 	offset := (page - 1) * limit
 	return s.repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
-func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
+func (s *orderService) GetByID(orderID uuid.UUID) (models.Order, error) {
 	order, err := s.cache.GetOrder(context.Background(), orderID)
 	if err == nil && order.ID != uuid.Nil {
 		return order, nil
@@ -44,7 +51,7 @@ func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
 	return order, err
 }
 
-func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error) {
+func (s *orderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error) {
 	if len(inputs) == 0 {
 		return models.Order{}, error_codes.ErrOrderEmpty
 	}
@@ -105,7 +112,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 	return order, nil
 }
 
-func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error) {
+func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error) {
 	if !newStatus.IsValid() {
 		return models.Order{}, error_codes.ErrInvalidOrderStatus
 	}

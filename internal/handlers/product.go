@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -12,11 +13,18 @@ import (
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
-	"golang-order-manager-api/pkg/database"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
+
+type ProductHandler struct {
+	productService services.ProductService // interface, não struct concreta
+}
+
+func NewProductHandler(productService services.ProductService) *ProductHandler {
+	return &ProductHandler{productService: productService}
+}
 
 const errInvalidProductID = "invalid product id"
 
@@ -65,15 +73,11 @@ func parseProductFilter(c echo.Context) repository.ProductFilter {
 // @Success 200 {object} responses.PaginatedResponse{data=[]dto.ProductResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products [get]
-func ListProducts(c echo.Context) error {
+func (h *ProductHandler) ListProducts(c echo.Context) error {
 	page, limit := parsePaginationParams(c)
 	filter := parseProductFilter(c)
 
-	db := database.GetDB()
-	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(repo)
-
-	products, total, err := productService.GetAll(page, limit, filter)
+	products, total, err := h.productService.GetAll(page, limit, filter)
 	if err != nil {
 		slog.Error("Failed to list products", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
@@ -111,17 +115,14 @@ func ListProducts(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Product not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products/{id} [get]
-func GetProduct(c echo.Context) error {
+func (h *ProductHandler) GetProduct(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
+		log.Println("Invalid product ID:", err)
 		return responses.Error(c, http.StatusBadRequest, errors.New(errInvalidProductID))
 	}
 
-	db := database.GetDB()
-	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(repo)
-
-	product, err := productService.GetByID(id)
+	product, err := h.productService.GetByID(id)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrProductNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
@@ -153,7 +154,9 @@ func GetProduct(c echo.Context) error {
 // @Failure 400 {object} responses.ErrorResponse "Invalid fields"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products [post]
-func CreateProduct(c echo.Context) error {
+func (h *ProductHandler) CreateProduct(c echo.Context) error {
+	//! TODO: Add conflict return if product with same name already exists
+
 	req := dto.CreateProductRequest{}
 	c.Bind(&req)
 
@@ -161,11 +164,7 @@ func CreateProduct(c echo.Context) error {
 		return responses.Error(c, http.StatusBadRequest, errors.New("name is required"))
 	}
 
-	db := database.GetDB()
-	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(repo)
-
-	product, err := productService.Create(models.Product{
+	product, err := h.productService.Create(models.Product{
 		Name:        req.Name,
 		Description: req.Description,
 		Price:       req.Price,
@@ -204,7 +203,7 @@ func CreateProduct(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Product not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products/{id} [patch]
-func UpdateProduct(c echo.Context) error {
+func (h *ProductHandler) UpdateProduct(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return responses.Error(c, http.StatusBadRequest, errors.New(errInvalidProductID))
@@ -213,11 +212,7 @@ func UpdateProduct(c echo.Context) error {
 	req := dto.UpdateProductRequest{}
 	c.Bind(&req)
 
-	db := database.GetDB()
-	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(repo)
-
-	product, err := productService.Update(id, req.Name, req.Description, req.Price, req.Stock)
+	product, err := h.productService.Update(id, req.Name, req.Description, req.Price, req.Stock)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrProductNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
@@ -251,17 +246,13 @@ func UpdateProduct(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Product not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /products/{id} [delete]
-func DeleteProduct(c echo.Context) error {
+func (h *ProductHandler) DeleteProduct(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return responses.Error(c, http.StatusBadRequest, errors.New(errInvalidProductID))
 	}
 
-	db := database.GetDB()
-	repo := repository.NewProductRepo(db)
-	productService := services.NewProductService(repo)
-
-	if err := productService.Delete(id); err != nil {
+	if err := h.productService.Delete(id); err != nil {
 		if errors.Is(err, error_codes.ErrProductNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
 		}

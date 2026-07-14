@@ -11,15 +11,23 @@ import (
 	"github.com/google/uuid"
 )
 
-type AuthService struct {
+type AuthService interface {
+	Register(username string, email string, password string) (models.User, error)
+	Login(email string, password string) (string, string, models.User, error)
+	Refresh(refreshToken string) (string, string, models.User, error)
+	Logout(refreshToken string) error
+	LogoutAll(userID uuid.UUID) error
+}
+
+type authService struct {
 	userRepo             repository.UserRepository
 	authRepo             repository.AuthRepository
 	refreshTokenDuration time.Duration
 	jwtSecret            string
 }
 
-func NewAuthService(userRepo repository.UserRepository, authRepo repository.AuthRepository, jwtSecret string, refreshTokenDuration time.Duration) *AuthService {
-	return &AuthService{
+func NewAuthService(userRepo repository.UserRepository, authRepo repository.AuthRepository, jwtSecret string, refreshTokenDuration time.Duration) AuthService {
+	return &authService{
 		userRepo:             userRepo,
 		authRepo:             authRepo,
 		refreshTokenDuration: refreshTokenDuration,
@@ -28,7 +36,7 @@ func NewAuthService(userRepo repository.UserRepository, authRepo repository.Auth
 }
 
 // ? Should CreateUser be part of AuthService or UserService? I think it should be part of UserService, but for now, I'll leave it here.
-func (s *AuthService) Register(username string, email string, password string) (models.User, error) {
+func (s *authService) Register(username string, email string, password string) (models.User, error) {
 	exists, err := s.userRepo.IsEmailAlreadyInUse(email, nil)
 	if err != nil {
 		return models.User{}, err
@@ -66,7 +74,7 @@ func (s *AuthService) Register(username string, email string, password string) (
 	return user, nil
 }
 
-func (s *AuthService) Login(email string, password string) (string, string, models.User, error) {
+func (s *authService) Login(email string, password string) (string, string, models.User, error) {
 
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
@@ -98,7 +106,7 @@ func (s *AuthService) Login(email string, password string) (string, string, mode
 	return token, refreshToken, user, nil
 }
 
-func (s *AuthService) Refresh(refreshToken string) (string, string, models.User, error) {
+func (s *authService) Refresh(refreshToken string) (string, string, models.User, error) {
 
 	userID, err := s.GetUserIDByRefreshToken(refreshToken)
 	if err != nil {
@@ -134,7 +142,7 @@ func (s *AuthService) Refresh(refreshToken string) (string, string, models.User,
 	return token, newRefreshToken, user, nil
 }
 
-func (s *AuthService) Logout(refreshToken string) error {
+func (s *authService) Logout(refreshToken string) error {
 
 	hashedToken := security.HashToken(refreshToken)
 	err := s.authRepo.RevokeRefreshToken(hashedToken)
@@ -145,7 +153,7 @@ func (s *AuthService) Logout(refreshToken string) error {
 	return nil
 }
 
-func (s *AuthService) LogoutAll(userID uuid.UUID) error {
+func (s *authService) LogoutAll(userID uuid.UUID) error {
 	err := s.authRepo.RevokeAllRefreshTokens(userID)
 	if err != nil {
 		return err
@@ -154,7 +162,7 @@ func (s *AuthService) LogoutAll(userID uuid.UUID) error {
 	return nil
 }
 
-func (s *AuthService) SaveRefreshToken(userID uuid.UUID, refreshToken string) error {
+func (s *authService) SaveRefreshToken(userID uuid.UUID, refreshToken string) error {
 
 	expiresAt := time.Now().Add(s.refreshTokenDuration)
 
@@ -168,7 +176,7 @@ func (s *AuthService) SaveRefreshToken(userID uuid.UUID, refreshToken string) er
 	return nil
 }
 
-func (s *AuthService) GetUserIDByRefreshToken(refreshToken string) (uuid.UUID, error) {
+func (s *authService) GetUserIDByRefreshToken(refreshToken string) (uuid.UUID, error) {
 
 	hashedToken := security.HashToken(refreshToken)
 

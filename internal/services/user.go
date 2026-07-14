@@ -9,17 +9,23 @@ import (
 	"github.com/google/uuid"
 )
 
-type UserService struct {
+type UserService interface {
+	Update(user models.User) (models.User, error)
+	Delete(id uuid.UUID) error
+	GetByID(id uuid.UUID) (models.User, error)
+}
+
+type userService struct {
 	userRepo repository.UserRepository
 }
 
-func NewUserService(userRepo repository.UserRepository) *UserService {
-	return &UserService{
+func NewUserService(userRepo repository.UserRepository) UserService {
+	return &userService{
 		userRepo: userRepo,
 	}
 }
 
-func (s *UserService) Update(user models.User) (models.User, error) {
+func (s *userService) Update(user models.User) (models.User, error) {
 
 	exists, err := s.userRepo.IsEmailAlreadyInUse(user.Email, &user.ID)
 	if err != nil {
@@ -56,7 +62,7 @@ func (s *UserService) Update(user models.User) (models.User, error) {
 	return user, nil
 }
 
-func (s *UserService) Delete(id uuid.UUID) error {
+func (s *userService) Delete(id uuid.UUID) error {
 
 	err := s.userRepo.DeleteUserByID(id)
 	if err != nil {
@@ -66,7 +72,7 @@ func (s *UserService) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (s *UserService) GetByID(id uuid.UUID) (models.User, error) {
+func (s *userService) GetByID(id uuid.UUID) (models.User, error) {
 
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {

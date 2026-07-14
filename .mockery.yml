@@ -13,14 +13,13 @@ packages:
       dir: "internal/repositories/mocks"
       outpkg: mocks
       with-expecter: true
-  # ? Should we generate mocks for services? It might be useful for testing handlers, but it could also be overkill.
-  # golang-order-manager-api/internal/services: 
-  #   interfaces:
-  #     UserService:
-  #     OrderService:
-  #     ProductService:
-  #     AuthService:
-  #   config:
-  #     dir: "internal/services/mocks"
-  #     outpkg: mocks
-  #     with-expecter: true
+  golang-order-manager-api/internal/services: 
+    interfaces:
+      UserService:
+      OrderService:
+      ProductService:
+      AuthService:
+    config:
+      dir: "internal/services/mocks"
+      outpkg: mocks
+      with-expecter: true

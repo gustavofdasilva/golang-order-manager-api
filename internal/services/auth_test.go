@@ -26,7 +26,7 @@ type authServiceMocks struct {
 	authRepo *repomocks.MockAuthRepository
 }
 
-func makeAuthService(t *testing.T) (*services.AuthService, authServiceMocks) {
+func makeAuthService(t *testing.T) (services.AuthService, authServiceMocks) {
 	m := authServiceMocks{
 		userRepo: repomocks.NewMockUserRepository(t),
 		authRepo: repomocks.NewMockAuthRepository(t),

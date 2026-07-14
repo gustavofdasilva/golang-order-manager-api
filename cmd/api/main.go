@@ -5,11 +5,14 @@ import (
 	"golang-order-manager-api/internal/config"
 	"golang-order-manager-api/internal/handlers"
 	"golang-order-manager-api/internal/middleware"
+	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/router"
+	"golang-order-manager-api/internal/services"
 	"golang-order-manager-api/pkg/cache"
 	"golang-order-manager-api/pkg/database"
 	"golang-order-manager-api/pkg/logger"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -37,7 +40,28 @@ func main() {
 	api.Use(middleware.LogRequest)
 	api.Use(middleware.CORSConfig())
 
-	router.InitRouter(api)
+	db := database.GetDB()
+
+	// repos
+	userRepo := repository.NewUserRepo(db)
+	authRepo := repository.NewAuthRepo(db)
+	productRepo := repository.NewProductRepo(db)
+	orderRepo := repository.NewOrderRepo(db)
+	orderTxFactory := repository.NewTxFactory(db)
+	orderCache := cache.NewRedisOrderCache()
+
+	// services
+	userService := services.NewUserService(userRepo)
+	authService := services.NewAuthService(userRepo, authRepo, config.SECRET_KEY, time.Duration(config.REFRESH_TOKEN_EXPIRATION_MINUTES)*time.Minute)
+	productService := services.NewProductService(productRepo)
+	orderService := services.NewOrderService(orderTxFactory, orderRepo, orderCache)
+
+	router.InitRouter(api, router.RouterServices{
+		UserService:    userService,
+		AuthService:    authService,
+		ProductService: productService,
+		OrderService:   orderService,
+	})
 
 	e.GET("/health", handlers.Health)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)

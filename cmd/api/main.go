@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	_ "golang-order-manager-api/migrations"
+
 	"github.com/labstack/echo/v4"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )

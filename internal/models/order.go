@@ -51,3 +51,7 @@ type OrderItem struct {
 	UnitPrice float64
 	Subtotal  float64
 }
+
+type OrderFilter struct {
+	Status *string
+}

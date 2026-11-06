@@ -5,22 +5,27 @@ import (
 	"golang-order-manager-api/internal/models"
 	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/security"
-	"log/slog"
 
 	"github.com/google/uuid"
 )
 
-type UserService struct {
-	userRepo *repository.UserRepo
+type UserService interface {
+	Update(user models.User) (models.User, error)
+	Delete(id uuid.UUID) error
+	GetByID(id uuid.UUID) (models.User, error)
 }
 
-func NewUserService(userRepo *repository.UserRepo) *UserService {
-	return &UserService{
+type userService struct {
+	userRepo repository.UserRepository
+}
+
+func NewUserService(userRepo repository.UserRepository) UserService {
+	return &userService{
 		userRepo: userRepo,
 	}
 }
 
-func (s *UserService) Update(user models.User) (models.User, error) {
+func (s *userService) Update(user models.User) (models.User, error) {
 
 	exists, err := s.userRepo.IsEmailAlreadyInUse(user.Email, &user.ID)
 	if err != nil {
@@ -57,7 +62,7 @@ func (s *UserService) Update(user models.User) (models.User, error) {
 	return user, nil
 }
 
-func (s *UserService) Delete(id uuid.UUID) error {
+func (s *userService) Delete(id uuid.UUID) error {
 
 	err := s.userRepo.DeleteUserByID(id)
 	if err != nil {
@@ -67,11 +72,10 @@ func (s *UserService) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (s *UserService) GetByID(id uuid.UUID) (models.User, error) {
+func (s *userService) GetByID(id uuid.UUID) (models.User, error) {
 
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
-		slog.Error("Failed to get user by ID", slog.Any("err", err), slog.Any("userID", id))
 		return models.User{}, err
 	}
 

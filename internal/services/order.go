@@ -144,7 +144,7 @@ func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 		}
 	}
 
-	if err := tx.OrderRepository().UpdateStatus(orderID, newStatus); err != nil {
+	if err := tx.OrderRepository().UpdateStatus(orderID, userID, newStatus); err != nil {
 		return models.Order{}, err
 	}
 

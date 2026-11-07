@@ -122,7 +122,7 @@ func TestOrderRepo_Update_Success(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	err := repo.UpdateStatus(order.ID, models.OrderStatusPaid)
+	err := repo.UpdateStatus(order.ID, order.UserID, models.OrderStatusPaid)
 	require.NoError(t, err)
 
 	updatedOrder, err := repo.GetByID(order.ID)
@@ -139,7 +139,7 @@ func TestOrderRepo_Update_NotFound(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	err := repo.UpdateStatus(uuid.New(), models.OrderStatusPaid)
+	err := repo.UpdateStatus(uuid.New(), uuid.New(), models.OrderStatusPaid)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, error_codes.ErrOrderNotFound)

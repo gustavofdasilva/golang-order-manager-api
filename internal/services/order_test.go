@@ -222,21 +222,23 @@ func TestUpdateStatus_ToPaid_DecrementsStock(t *testing.T) {
 	svc, m := makeOrderService(t)
 	m.expectTx(t)
 
+	userID := uuid.New()
 	orderID := uuid.New()
 	productID := uuid.New()
 	order := models.Order{
+		UserID: userID,
 		ID:     orderID,
 		Status: models.OrderStatusPending,
 		Items:  []models.OrderItem{{ProductID: productID, Quantity: 3}},
 	}
 
 	m.orderRepo.EXPECT().GetByID(orderID).Return(order, nil)
-	m.orderRepo.EXPECT().UpdateStatus(orderID, models.OrderStatusPaid).Return(nil)
+	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusPaid).Return(nil)
 	m.productRepo.EXPECT().DecrementStock(productID, 3).Return(nil)
 	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID).Return(nil)
 	m.orderTx.EXPECT().Commit().Return(nil)
 
-	result, err := svc.UpdateStatus(orderID, uuid.New(), models.OrderStatusPaid)
+	result, err := svc.UpdateStatus(orderID, userID, models.OrderStatusPaid)
 
 	require.NoError(t, err)
 	assert.Equal(t, models.OrderStatusPaid, result.Status)
@@ -246,6 +248,7 @@ func TestUpdateStatus_ToCancelled_WhenPaid_IncrementsStock(t *testing.T) {
 	svc, m := makeOrderService(t)
 	m.expectTx(t)
 
+	userID := uuid.New()
 	orderID := uuid.New()
 	productID := uuid.New()
 	order := models.Order{
@@ -255,12 +258,12 @@ func TestUpdateStatus_ToCancelled_WhenPaid_IncrementsStock(t *testing.T) {
 	}
 
 	m.orderRepo.EXPECT().GetByID(orderID).Return(order, nil)
-	m.orderRepo.EXPECT().UpdateStatus(orderID, models.OrderStatusCancelled).Return(nil)
+	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusCancelled).Return(nil)
 	m.productRepo.EXPECT().IncrementStock(productID, 2).Return(nil)
 	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID).Return(nil)
 	m.orderTx.EXPECT().Commit().Return(nil)
 
-	result, err := svc.UpdateStatus(orderID, uuid.New(), models.OrderStatusCancelled)
+	result, err := svc.UpdateStatus(orderID, userID, models.OrderStatusCancelled)
 
 	require.NoError(t, err)
 	assert.Equal(t, models.OrderStatusCancelled, result.Status)

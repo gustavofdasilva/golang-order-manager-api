@@ -22,7 +22,7 @@ type OrderRepository interface {
 	GetByID(orderID uuid.UUID) (models.Order, error)
 	Create(o models.Order) (models.Order, error)
 	CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]models.OrderItem, error)
-	UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error
+	UpdateStatus(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus) error
 }
 
 type OrderRepo struct {
@@ -150,9 +150,9 @@ func (r *OrderRepo) CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]
 	return items, nil
 }
 
-func (r *OrderRepo) UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error {
-	query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`
-	result, err := r.db.Exec(query, status, orderID)
+func (r *OrderRepo) UpdateStatus(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus) error {
+	query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`
+	result, err := r.db.Exec(query, status, orderID, userID)
 	if err != nil {
 		return fmt.Errorf("error updating order status: %v", err)
 	}

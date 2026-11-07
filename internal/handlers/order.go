@@ -82,13 +82,14 @@ func (h *OrderHandler) ListOrders(c echo.Context) error {
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders/{id} [get]
 func (h *OrderHandler) GetOrder(c echo.Context) error {
+	userID := c.Get("userID").(uuid.UUID)
 
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return responses.Error(c, http.StatusBadRequest, errors.New("invalid order id"))
 	}
 
-	order, err := h.orderService.GetByID(orderID)
+	order, err := h.orderService.GetByID(orderID, userID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrOrderNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)

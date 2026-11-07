@@ -142,7 +142,7 @@ func TestGetOrder_Success(t *testing.T) {
 	userID := uuid.New()
 	order := fakeOrder(userID)
 
-	m.EXPECT().GetByID(order.ID).Return(order, nil)
+	m.EXPECT().GetByID(order.ID, userID).Return(order, nil)
 
 	c, rec := newOrderContext(http.MethodGet, "/orders/"+order.ID.String(), "", userID, map[string]string{"id": order.ID.String()})
 	err := h.GetOrder(c)
@@ -163,9 +163,10 @@ func TestGetOrder_NotFound(t *testing.T) {
 	h, m := makeOrderHandler(t)
 
 	orderID := uuid.New()
-	m.EXPECT().GetByID(orderID).Return(models.Order{}, error_codes.ErrOrderNotFound)
+	userID := uuid.New()
+	m.EXPECT().GetByID(orderID, userID).Return(models.Order{}, error_codes.ErrOrderNotFound)
 
-	c, rec := newOrderContext(http.MethodGet, "/orders/"+orderID.String(), "", uuid.New(), map[string]string{"id": orderID.String()})
+	c, rec := newOrderContext(http.MethodGet, "/orders/"+orderID.String(), "", userID, map[string]string{"id": orderID.String()})
 	err := h.GetOrder(c)
 
 	require.NoError(t, err)

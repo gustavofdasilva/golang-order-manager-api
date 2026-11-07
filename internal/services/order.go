@@ -18,7 +18,7 @@ type OrderItemInput struct {
 
 type OrderService interface {
 	GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error)
-	GetByID(orderID uuid.UUID) (models.Order, error)
+	GetByID(orderID, userID uuid.UUID) (models.Order, error)
 	CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error)
 	UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error)
 }
@@ -38,13 +38,13 @@ func (s *orderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter 
 	return s.repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
-func (s *orderService) GetByID(orderID uuid.UUID) (models.Order, error) {
+func (s *orderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
 	order, err := s.cache.GetOrder(context.Background(), orderID)
 	if err == nil && order.ID != uuid.Nil {
 		return order, nil
 	}
 
-	order, err = s.repo.GetByID(orderID)
+	order, err = s.repo.GetByID(orderID, userID)
 
 	s.cache.SetOrder(context.Background(), order)
 
@@ -123,7 +123,7 @@ func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	}
 	defer tx.Rollback()
 
-	order, err := tx.OrderRepository().GetByID(orderID)
+	order, err := tx.OrderRepository().GetByID(orderID, userID)
 	if err != nil {
 		return models.Order{}, err
 	}

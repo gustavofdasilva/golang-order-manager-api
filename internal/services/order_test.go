@@ -55,15 +55,33 @@ func TestGetByID_FromCache(t *testing.T) {
 	cached := models.Order{ID: orderID, Status: models.OrderStatusPending}
 
 	m.cache.EXPECT().
-		GetOrder(mock.Anything, orderID).
+		GetOrder(mock.Anything, orderID, userID).
 		Return(cached, nil)
 
 	result, err := svc.GetByID(orderID, userID)
 
 	require.NoError(t, err)
 	assert.Equal(t, orderID, result.ID)
-	// repo nunca foi chamado
 	m.orderRepo.AssertNotCalled(t, "GetByID")
+}
+
+func TestGetByID_DoesNotCacheOnError(t *testing.T) {
+	svc, m := makeOrderService(t)
+
+	orderID := uuid.New()
+	userID := uuid.New()
+
+	m.cache.EXPECT().
+		GetOrder(mock.Anything, orderID, userID).
+		Return(models.Order{}, nil) // cache miss
+
+	m.orderRepo.EXPECT().
+		GetByID(orderID, userID).
+		Return(models.Order{}, error_codes.ErrOrderNotFound)
+
+	_, err := svc.GetByID(orderID, userID)
+
+	assert.ErrorIs(t, err, error_codes.ErrOrderNotFound)
 }
 
 func TestGetByID_FromRepo_WhenCacheMiss(t *testing.T) {
@@ -74,7 +92,7 @@ func TestGetByID_FromRepo_WhenCacheMiss(t *testing.T) {
 	order := models.Order{ID: orderID, Status: models.OrderStatusPending}
 
 	m.cache.EXPECT().
-		GetOrder(mock.Anything, orderID).
+		GetOrder(mock.Anything, orderID, userID).
 		Return(models.Order{}, nil) // cache miss
 
 	m.orderRepo.EXPECT().
@@ -82,14 +100,14 @@ func TestGetByID_FromRepo_WhenCacheMiss(t *testing.T) {
 		Return(order, nil)
 
 	m.cache.EXPECT().
-		SetOrder(mock.Anything, order).
+		SetOrder(mock.Anything, order, userID).
 		Return(nil)
 
 	result, err := svc.GetByID(orderID, userID)
 
 	require.NoError(t, err)
 	assert.Equal(t, orderID, result.ID)
-	m.cache.AssertCalled(t, "SetOrder", mock.Anything, order)
+	m.cache.AssertCalled(t, "SetOrder", mock.Anything, order, userID)
 }
 
 func TestCreateOrder_Success(t *testing.T) {
@@ -238,7 +256,7 @@ func TestUpdateStatus_ToPaid_DecrementsStock(t *testing.T) {
 	m.orderRepo.EXPECT().GetByID(orderID, userID).Return(order, nil)
 	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusPaid).Return(nil)
 	m.productRepo.EXPECT().DecrementStock(productID, 3).Return(nil)
-	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID).Return(nil)
+	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID, userID).Return(nil)
 	m.orderTx.EXPECT().Commit().Return(nil)
 
 	result, err := svc.UpdateStatus(orderID, userID, models.OrderStatusPaid)
@@ -264,7 +282,7 @@ func TestUpdateStatus_ToCancelled_WhenPaid_IncrementsStock(t *testing.T) {
 	m.orderRepo.EXPECT().GetByID(orderID, userID).Return(order, nil)
 	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusCancelled).Return(nil)
 	m.productRepo.EXPECT().IncrementStock(productID, 2).Return(nil)
-	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID).Return(nil)
+	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID, userID).Return(nil)
 	m.orderTx.EXPECT().Commit().Return(nil)
 
 	result, err := svc.UpdateStatus(orderID, userID, models.OrderStatusCancelled)

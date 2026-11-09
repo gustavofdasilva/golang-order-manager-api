@@ -12,9 +12,9 @@ import (
 )
 
 type OrderCache interface {
-	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
-	SetOrder(ctx context.Context, order models.Order) error
-	DeleteOrder(ctx context.Context, id uuid.UUID) error
+	GetOrder(ctx context.Context, id, userID uuid.UUID) (models.Order, error)
+	SetOrder(ctx context.Context, order models.Order, userID uuid.UUID) error
+	DeleteOrder(ctx context.Context, id, userID uuid.UUID) error
 }
 
 type OrderRepository interface {

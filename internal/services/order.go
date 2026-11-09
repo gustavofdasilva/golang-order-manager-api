@@ -39,14 +39,17 @@ func (s *orderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter 
 }
 
 func (s *orderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
-	order, err := s.cache.GetOrder(context.Background(), orderID)
+	order, err := s.cache.GetOrder(context.Background(), orderID, userID)
 	if err == nil && order.ID != uuid.Nil {
 		return order, nil
 	}
 
 	order, err = s.repo.GetByID(orderID, userID)
+	if err != nil {
+		return models.Order{}, err
+	}
 
-	s.cache.SetOrder(context.Background(), order)
+	s.cache.SetOrder(context.Background(), order, userID)
 
 	return order, err
 }
@@ -148,7 +151,7 @@ func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 		return models.Order{}, err
 	}
 
-	s.cache.DeleteOrder(context.Background(), orderID)
+	s.cache.DeleteOrder(context.Background(), orderID, userID)
 
 	if err := tx.Commit(); err != nil {
 		return models.Order{}, fmt.Errorf("error committing transaction: %v", err)

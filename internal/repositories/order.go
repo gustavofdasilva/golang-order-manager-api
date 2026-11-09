@@ -12,17 +12,17 @@ import (
 )
 
 type OrderCache interface {
-	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
-	SetOrder(ctx context.Context, order models.Order) error
-	DeleteOrder(ctx context.Context, id uuid.UUID) error
+	GetOrder(ctx context.Context, id, userID uuid.UUID) (models.Order, error)
+	SetOrder(ctx context.Context, order models.Order, userID uuid.UUID) error
+	DeleteOrder(ctx context.Context, id, userID uuid.UUID) error
 }
 
 type OrderRepository interface {
 	GetAllByUserID(userID uuid.UUID, limit, offset int, f models.OrderFilter) ([]models.Order, int, error)
-	GetByID(orderID uuid.UUID) (models.Order, error)
+	GetByID(orderID, userID uuid.UUID) (models.Order, error)
 	Create(o models.Order) (models.Order, error)
 	CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]models.OrderItem, error)
-	UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error
+	UpdateStatus(orderID, userID uuid.UUID, status models.OrderStatus) error
 }
 
 type OrderRepo struct {
@@ -68,14 +68,14 @@ func (r *OrderRepo) GetAllByUserID(userID uuid.UUID, limit, offset int, f models
 	return orders, total, nil
 }
 
-func (r *OrderRepo) GetByID(orderID uuid.UUID) (models.Order, error) {
+func (r *OrderRepo) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
 	query := `
 		SELECT id, user_id, status, total_amount, created_at, updated_at
 		FROM orders
-		WHERE id = $1	
+		WHERE id = $1 AND user_id = $2
 	`
 	var o models.Order
-	err := r.db.QueryRow(query, orderID).
+	err := r.db.QueryRow(query, orderID, userID).
 		Scan(&o.ID, &o.UserID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -150,9 +150,9 @@ func (r *OrderRepo) CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]
 	return items, nil
 }
 
-func (r *OrderRepo) UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error {
-	query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`
-	result, err := r.db.Exec(query, status, orderID)
+func (r *OrderRepo) UpdateStatus(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus) error {
+	query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`
+	result, err := r.db.Exec(query, status, orderID, userID)
 	if err != nil {
 		return fmt.Errorf("error updating order status: %v", err)
 	}

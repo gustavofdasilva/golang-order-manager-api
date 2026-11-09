@@ -24,17 +24,17 @@ func (_m *MockOrderCache) EXPECT() *MockOrderCache_Expecter {
 	return &MockOrderCache_Expecter{mock: &_m.Mock}
 }
 
-// DeleteOrder provides a mock function with given fields: ctx, id
-func (_m *MockOrderCache) DeleteOrder(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
+// DeleteOrder provides a mock function with given fields: ctx, id, userID
+func (_m *MockOrderCache) DeleteOrder(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	ret := _m.Called(ctx, id, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteOrder")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, id, userID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -50,13 +50,14 @@ type MockOrderCache_DeleteOrder_Call struct {
 // DeleteOrder is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockOrderCache_Expecter) DeleteOrder(ctx interface{}, id interface{}) *MockOrderCache_DeleteOrder_Call {
-	return &MockOrderCache_DeleteOrder_Call{Call: _e.mock.On("DeleteOrder", ctx, id)}
+//   - userID uuid.UUID
+func (_e *MockOrderCache_Expecter) DeleteOrder(ctx interface{}, id interface{}, userID interface{}) *MockOrderCache_DeleteOrder_Call {
+	return &MockOrderCache_DeleteOrder_Call{Call: _e.mock.On("DeleteOrder", ctx, id, userID)}
 }
 
-func (_c *MockOrderCache_DeleteOrder_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockOrderCache_DeleteOrder_Call {
+func (_c *MockOrderCache_DeleteOrder_Call) Run(run func(ctx context.Context, id uuid.UUID, userID uuid.UUID)) *MockOrderCache_DeleteOrder_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID))
 	})
 	return _c
 }
@@ -66,14 +67,14 @@ func (_c *MockOrderCache_DeleteOrder_Call) Return(_a0 error) *MockOrderCache_Del
 	return _c
 }
 
-func (_c *MockOrderCache_DeleteOrder_Call) RunAndReturn(run func(context.Context, uuid.UUID) error) *MockOrderCache_DeleteOrder_Call {
+func (_c *MockOrderCache_DeleteOrder_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) error) *MockOrderCache_DeleteOrder_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetOrder provides a mock function with given fields: ctx, id
-func (_m *MockOrderCache) GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error) {
-	ret := _m.Called(ctx, id)
+// GetOrder provides a mock function with given fields: ctx, id, userID
+func (_m *MockOrderCache) GetOrder(ctx context.Context, id uuid.UUID, userID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(ctx, id, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOrder")
@@ -81,17 +82,17 @@ func (_m *MockOrderCache) GetOrder(ctx context.Context, id uuid.UUID) (models.Or
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (models.Order, error)); ok {
-		return rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (models.Order, error)); ok {
+		return rf(ctx, id, userID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) models.Order); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) models.Order); ok {
+		r0 = rf(ctx, id, userID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = rf(ctx, id)
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(ctx, id, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -107,13 +108,14 @@ type MockOrderCache_GetOrder_Call struct {
 // GetOrder is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockOrderCache_Expecter) GetOrder(ctx interface{}, id interface{}) *MockOrderCache_GetOrder_Call {
-	return &MockOrderCache_GetOrder_Call{Call: _e.mock.On("GetOrder", ctx, id)}
+//   - userID uuid.UUID
+func (_e *MockOrderCache_Expecter) GetOrder(ctx interface{}, id interface{}, userID interface{}) *MockOrderCache_GetOrder_Call {
+	return &MockOrderCache_GetOrder_Call{Call: _e.mock.On("GetOrder", ctx, id, userID)}
 }
 
-func (_c *MockOrderCache_GetOrder_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockOrderCache_GetOrder_Call {
+func (_c *MockOrderCache_GetOrder_Call) Run(run func(ctx context.Context, id uuid.UUID, userID uuid.UUID)) *MockOrderCache_GetOrder_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uuid.UUID))
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(uuid.UUID))
 	})
 	return _c
 }
@@ -123,22 +125,22 @@ func (_c *MockOrderCache_GetOrder_Call) Return(_a0 models.Order, _a1 error) *Moc
 	return _c
 }
 
-func (_c *MockOrderCache_GetOrder_Call) RunAndReturn(run func(context.Context, uuid.UUID) (models.Order, error)) *MockOrderCache_GetOrder_Call {
+func (_c *MockOrderCache_GetOrder_Call) RunAndReturn(run func(context.Context, uuid.UUID, uuid.UUID) (models.Order, error)) *MockOrderCache_GetOrder_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetOrder provides a mock function with given fields: ctx, order
-func (_m *MockOrderCache) SetOrder(ctx context.Context, order models.Order) error {
-	ret := _m.Called(ctx, order)
+// SetOrder provides a mock function with given fields: ctx, order, userID
+func (_m *MockOrderCache) SetOrder(ctx context.Context, order models.Order, userID uuid.UUID) error {
+	ret := _m.Called(ctx, order, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetOrder")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, models.Order) error); ok {
-		r0 = rf(ctx, order)
+	if rf, ok := ret.Get(0).(func(context.Context, models.Order, uuid.UUID) error); ok {
+		r0 = rf(ctx, order, userID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -154,13 +156,14 @@ type MockOrderCache_SetOrder_Call struct {
 // SetOrder is a helper method to define mock.On call
 //   - ctx context.Context
 //   - order models.Order
-func (_e *MockOrderCache_Expecter) SetOrder(ctx interface{}, order interface{}) *MockOrderCache_SetOrder_Call {
-	return &MockOrderCache_SetOrder_Call{Call: _e.mock.On("SetOrder", ctx, order)}
+//   - userID uuid.UUID
+func (_e *MockOrderCache_Expecter) SetOrder(ctx interface{}, order interface{}, userID interface{}) *MockOrderCache_SetOrder_Call {
+	return &MockOrderCache_SetOrder_Call{Call: _e.mock.On("SetOrder", ctx, order, userID)}
 }
 
-func (_c *MockOrderCache_SetOrder_Call) Run(run func(ctx context.Context, order models.Order)) *MockOrderCache_SetOrder_Call {
+func (_c *MockOrderCache_SetOrder_Call) Run(run func(ctx context.Context, order models.Order, userID uuid.UUID)) *MockOrderCache_SetOrder_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(models.Order))
+		run(args[0].(context.Context), args[1].(models.Order), args[2].(uuid.UUID))
 	})
 	return _c
 }
@@ -170,7 +173,7 @@ func (_c *MockOrderCache_SetOrder_Call) Return(_a0 error) *MockOrderCache_SetOrd
 	return _c
 }
 
-func (_c *MockOrderCache_SetOrder_Call) RunAndReturn(run func(context.Context, models.Order) error) *MockOrderCache_SetOrder_Call {
+func (_c *MockOrderCache_SetOrder_Call) RunAndReturn(run func(context.Context, models.Order, uuid.UUID) error) *MockOrderCache_SetOrder_Call {
 	_c.Call.Return(run)
 	return _c
 }

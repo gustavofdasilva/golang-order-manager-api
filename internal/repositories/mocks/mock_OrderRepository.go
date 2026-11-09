@@ -206,9 +206,9 @@ func (_c *MockOrderRepository_GetAllByUserID_Call) RunAndReturn(run func(uuid.UU
 	return _c
 }
 
-// GetByID provides a mock function with given fields: orderID
-func (_m *MockOrderRepository) GetByID(orderID uuid.UUID) (models.Order, error) {
-	ret := _m.Called(orderID)
+// GetByID provides a mock function with given fields: orderID, userID
+func (_m *MockOrderRepository) GetByID(orderID uuid.UUID, userID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(orderID, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByID")
@@ -216,17 +216,17 @@ func (_m *MockOrderRepository) GetByID(orderID uuid.UUID) (models.Order, error) 
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uuid.UUID) (models.Order, error)); ok {
-		return rf(orderID)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) (models.Order, error)); ok {
+		return rf(orderID, userID)
 	}
-	if rf, ok := ret.Get(0).(func(uuid.UUID) models.Order); ok {
-		r0 = rf(orderID)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) models.Order); ok {
+		r0 = rf(orderID, userID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(uuid.UUID) error); ok {
-		r1 = rf(orderID)
+	if rf, ok := ret.Get(1).(func(uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(orderID, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -241,13 +241,14 @@ type MockOrderRepository_GetByID_Call struct {
 
 // GetByID is a helper method to define mock.On call
 //   - orderID uuid.UUID
-func (_e *MockOrderRepository_Expecter) GetByID(orderID interface{}) *MockOrderRepository_GetByID_Call {
-	return &MockOrderRepository_GetByID_Call{Call: _e.mock.On("GetByID", orderID)}
+//   - userID uuid.UUID
+func (_e *MockOrderRepository_Expecter) GetByID(orderID interface{}, userID interface{}) *MockOrderRepository_GetByID_Call {
+	return &MockOrderRepository_GetByID_Call{Call: _e.mock.On("GetByID", orderID, userID)}
 }
 
-func (_c *MockOrderRepository_GetByID_Call) Run(run func(orderID uuid.UUID)) *MockOrderRepository_GetByID_Call {
+func (_c *MockOrderRepository_GetByID_Call) Run(run func(orderID uuid.UUID, userID uuid.UUID)) *MockOrderRepository_GetByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uuid.UUID))
+		run(args[0].(uuid.UUID), args[1].(uuid.UUID))
 	})
 	return _c
 }
@@ -257,22 +258,22 @@ func (_c *MockOrderRepository_GetByID_Call) Return(_a0 models.Order, _a1 error) 
 	return _c
 }
 
-func (_c *MockOrderRepository_GetByID_Call) RunAndReturn(run func(uuid.UUID) (models.Order, error)) *MockOrderRepository_GetByID_Call {
+func (_c *MockOrderRepository_GetByID_Call) RunAndReturn(run func(uuid.UUID, uuid.UUID) (models.Order, error)) *MockOrderRepository_GetByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// UpdateStatus provides a mock function with given fields: orderID, status
-func (_m *MockOrderRepository) UpdateStatus(orderID uuid.UUID, status models.OrderStatus) error {
-	ret := _m.Called(orderID, status)
+// UpdateStatus provides a mock function with given fields: orderID, userID, status
+func (_m *MockOrderRepository) UpdateStatus(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus) error {
+	ret := _m.Called(orderID, userID, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(uuid.UUID, models.OrderStatus) error); ok {
-		r0 = rf(orderID, status)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID, models.OrderStatus) error); ok {
+		r0 = rf(orderID, userID, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -287,14 +288,15 @@ type MockOrderRepository_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - orderID uuid.UUID
+//   - userID uuid.UUID
 //   - status models.OrderStatus
-func (_e *MockOrderRepository_Expecter) UpdateStatus(orderID interface{}, status interface{}) *MockOrderRepository_UpdateStatus_Call {
-	return &MockOrderRepository_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", orderID, status)}
+func (_e *MockOrderRepository_Expecter) UpdateStatus(orderID interface{}, userID interface{}, status interface{}) *MockOrderRepository_UpdateStatus_Call {
+	return &MockOrderRepository_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", orderID, userID, status)}
 }
 
-func (_c *MockOrderRepository_UpdateStatus_Call) Run(run func(orderID uuid.UUID, status models.OrderStatus)) *MockOrderRepository_UpdateStatus_Call {
+func (_c *MockOrderRepository_UpdateStatus_Call) Run(run func(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus)) *MockOrderRepository_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uuid.UUID), args[1].(models.OrderStatus))
+		run(args[0].(uuid.UUID), args[1].(uuid.UUID), args[2].(models.OrderStatus))
 	})
 	return _c
 }
@@ -304,7 +306,7 @@ func (_c *MockOrderRepository_UpdateStatus_Call) Return(_a0 error) *MockOrderRep
 	return _c
 }
 
-func (_c *MockOrderRepository_UpdateStatus_Call) RunAndReturn(run func(uuid.UUID, models.OrderStatus) error) *MockOrderRepository_UpdateStatus_Call {
+func (_c *MockOrderRepository_UpdateStatus_Call) RunAndReturn(run func(uuid.UUID, uuid.UUID, models.OrderStatus) error) *MockOrderRepository_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -150,9 +150,9 @@ func (_c *MockOrderService_GetAllByUserID_Call) RunAndReturn(run func(uuid.UUID,
 	return _c
 }
 
-// GetByID provides a mock function with given fields: orderID
-func (_m *MockOrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
-	ret := _m.Called(orderID)
+// GetByID provides a mock function with given fields: orderID, userID
+func (_m *MockOrderService) GetByID(orderID uuid.UUID, userID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(orderID, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByID")
@@ -160,17 +160,17 @@ func (_m *MockOrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
 
 	var r0 models.Order
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uuid.UUID) (models.Order, error)); ok {
-		return rf(orderID)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) (models.Order, error)); ok {
+		return rf(orderID, userID)
 	}
-	if rf, ok := ret.Get(0).(func(uuid.UUID) models.Order); ok {
-		r0 = rf(orderID)
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) models.Order); ok {
+		r0 = rf(orderID, userID)
 	} else {
 		r0 = ret.Get(0).(models.Order)
 	}
 
-	if rf, ok := ret.Get(1).(func(uuid.UUID) error); ok {
-		r1 = rf(orderID)
+	if rf, ok := ret.Get(1).(func(uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(orderID, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -185,13 +185,14 @@ type MockOrderService_GetByID_Call struct {
 
 // GetByID is a helper method to define mock.On call
 //   - orderID uuid.UUID
-func (_e *MockOrderService_Expecter) GetByID(orderID interface{}) *MockOrderService_GetByID_Call {
-	return &MockOrderService_GetByID_Call{Call: _e.mock.On("GetByID", orderID)}
+//   - userID uuid.UUID
+func (_e *MockOrderService_Expecter) GetByID(orderID interface{}, userID interface{}) *MockOrderService_GetByID_Call {
+	return &MockOrderService_GetByID_Call{Call: _e.mock.On("GetByID", orderID, userID)}
 }
 
-func (_c *MockOrderService_GetByID_Call) Run(run func(orderID uuid.UUID)) *MockOrderService_GetByID_Call {
+func (_c *MockOrderService_GetByID_Call) Run(run func(orderID uuid.UUID, userID uuid.UUID)) *MockOrderService_GetByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uuid.UUID))
+		run(args[0].(uuid.UUID), args[1].(uuid.UUID))
 	})
 	return _c
 }
@@ -201,7 +202,7 @@ func (_c *MockOrderService_GetByID_Call) Return(_a0 models.Order, _a1 error) *Mo
 	return _c
 }
 
-func (_c *MockOrderService_GetByID_Call) RunAndReturn(run func(uuid.UUID) (models.Order, error)) *MockOrderService_GetByID_Call {
+func (_c *MockOrderService_GetByID_Call) RunAndReturn(run func(uuid.UUID, uuid.UUID) (models.Order, error)) *MockOrderService_GetByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

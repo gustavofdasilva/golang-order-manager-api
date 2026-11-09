@@ -42,7 +42,7 @@ func TestOrderRepo_GetByID_Success(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	result, err := repo.GetByID(order.ID)
+	result, err := repo.GetByID(order.ID, order.UserID)
 
 	require.NoError(t, err)
 	assert.Equal(t, order.ID, result.ID)
@@ -59,7 +59,7 @@ func TestOrderRepo_GetByID_NotFound(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	_, err := repo.GetByID(uuid.New())
+	_, err := repo.GetByID(uuid.New(), uuid.New())
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, error_codes.ErrOrderNotFound)
@@ -122,10 +122,10 @@ func TestOrderRepo_Update_Success(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	err := repo.UpdateStatus(order.ID, models.OrderStatusPaid)
+	err := repo.UpdateStatus(order.ID, order.UserID, models.OrderStatusPaid)
 	require.NoError(t, err)
 
-	updatedOrder, err := repo.GetByID(order.ID)
+	updatedOrder, err := repo.GetByID(order.ID, order.UserID)
 	require.NoError(t, err)
 
 	assert.Equal(t, models.OrderStatusPaid, updatedOrder.Status)
@@ -139,8 +139,29 @@ func TestOrderRepo_Update_NotFound(t *testing.T) {
 
 	repo := repository.NewOrderRepo(db)
 
-	err := repo.UpdateStatus(uuid.New(), models.OrderStatusPaid)
+	err := repo.UpdateStatus(uuid.New(), uuid.New(), models.OrderStatusPaid)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, error_codes.ErrOrderNotFound)
+}
+
+func TestOrderRepo_Update_WrongOwnership(t *testing.T) {
+	db := testDB
+	t.Cleanup(func() {
+		ClearDatabase(db)
+	})
+
+	order := testhelpers.CreateOrderFixture(t, db, nil)
+
+	repo := repository.NewOrderRepo(db)
+
+	err := repo.UpdateStatus(order.ID, uuid.New(), models.OrderStatusPaid)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, error_codes.ErrOrderNotFound)
+
+	dbOrder, err := repo.GetByID(order.ID, order.UserID)
+
+	require.NoError(t, err)
+	assert.Equal(t, order.Status, dbOrder.Status)
 }

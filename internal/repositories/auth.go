@@ -32,7 +32,7 @@ func (repo *AuthRepo) SaveRefreshToken(userID uuid.UUID, refreshToken string, ex
 
 	_, err := repo.db.Exec(query, userID, refreshToken, expiresAt)
 	if err != nil {
-		return fmt.Errorf("error to save refresh token: %v", err)
+		return fmt.Errorf("error to save refresh token: %w", err)
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (repo *AuthRepo) GetRefreshToken(refreshToken string) (uuid.UUID, time.Time
 		if err == sql.ErrNoRows {
 			return uuid.Nil, time.Time{}, time.Time{}, error_codes.ErrRefreshTokenNotFound
 		}
-		return uuid.Nil, time.Time{}, time.Time{}, fmt.Errorf("error to scan row: %v", err)
+		return uuid.Nil, time.Time{}, time.Time{}, fmt.Errorf("error to scan row: %w", err)
 	}
 
 	return userID, revokedAt.Time, expiresAt, nil
@@ -68,12 +68,12 @@ func (repo *AuthRepo) RevokeRefreshToken(refreshToken string) error {
 
 	result, err := repo.db.Exec(query, refreshToken)
 	if err != nil {
-		return fmt.Errorf("error to revoke refresh token: %v", err)
+		return fmt.Errorf("error to revoke refresh token: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error to get rows affected: %v", err)
+		return fmt.Errorf("error to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
@@ -91,12 +91,12 @@ func (repo *AuthRepo) RevokeAllRefreshTokens(userID uuid.UUID) error {
 
 	result, err := repo.db.Exec(query, userID)
 	if err != nil {
-		return fmt.Errorf("error to revoke all refresh tokens: %v", err)
+		return fmt.Errorf("error to revoke all refresh tokens: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error to get rows affected: %v", err)
+		return fmt.Errorf("error to get rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {

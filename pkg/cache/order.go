@@ -20,8 +20,8 @@ func NewRedisOrderCache() *RedisOrderCache {
 	return &RedisOrderCache{rdb: rdb}
 }
 
-func (c *RedisOrderCache) GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error) {
-	val, err := c.rdb.Get(ctx, "order:"+id.String()).Bytes()
+func (c *RedisOrderCache) GetOrder(ctx context.Context, id, userID uuid.UUID) (models.Order, error) {
+	val, err := c.rdb.Get(ctx, "user:"+userID.String()+":order:"+id.String()).Bytes()
 	if err == redis.Nil {
 		return models.Order{}, nil
 	}
@@ -30,15 +30,15 @@ func (c *RedisOrderCache) GetOrder(ctx context.Context, id uuid.UUID) (models.Or
 	return order, nil
 }
 
-func (c *RedisOrderCache) SetOrder(ctx context.Context, order models.Order) error {
+func (c *RedisOrderCache) SetOrder(ctx context.Context, order models.Order, userID uuid.UUID) error {
 	val, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}
 
-	return c.rdb.Set(ctx, "order:"+order.ID.String(), val, 0).Err()
+	return c.rdb.Set(ctx, "user:"+userID.String()+":order:"+order.ID.String(), val, 0).Err()
 }
 
-func (c *RedisOrderCache) DeleteOrder(ctx context.Context, id uuid.UUID) error {
-	return c.rdb.Del(ctx, "order:"+id.String()).Err()
+func (c *RedisOrderCache) DeleteOrder(ctx context.Context, id, userID uuid.UUID) error {
+	return c.rdb.Del(ctx, "user:"+userID.String()+":order:"+id.String()).Err()
 }

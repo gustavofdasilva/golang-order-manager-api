@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	error_codes "golang-order-manager-api/internal/errors"
@@ -12,59 +11,59 @@ import (
 	"github.com/google/uuid"
 )
 
-type OrderCache interface {
-	GetOrder(ctx context.Context, id uuid.UUID) (models.Order, error)
-	SetOrder(ctx context.Context, order models.Order) error
-	DeleteOrder(ctx context.Context, id uuid.UUID) error
-}
-
 type OrderItemInput struct {
 	ProductID uuid.UUID
 	Quantity  int
 }
 
-type OrderService struct {
-	db    *sql.DB
-	cache OrderCache
+type OrderService interface {
+	GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error)
+	GetByID(orderID, userID uuid.UUID) (models.Order, error)
+	CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error)
+	UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error)
 }
 
-func NewOrderService(db *sql.DB, cache OrderCache) *OrderService {
-	return &OrderService{db: db, cache: cache}
+type orderService struct {
+	txFactory repository.OrderTxFactory
+	repo      repository.OrderRepository
+	cache     repository.OrderCache
 }
 
-func (s *OrderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter repository.OrderFilter) ([]models.Order, int, error) {
-	repo := repository.NewOrderRepo(s.db)
+func NewOrderService(txFactory repository.OrderTxFactory, repo repository.OrderRepository, cache repository.OrderCache) OrderService {
+	return &orderService{txFactory: txFactory, repo: repo, cache: cache}
+}
+
+func (s *orderService) GetAllByUserID(userID uuid.UUID, page, limit int, filter models.OrderFilter) ([]models.Order, int, error) {
 	offset := (page - 1) * limit
-	return repo.GetAllByUserID(userID, limit, offset, filter)
+	return s.repo.GetAllByUserID(userID, limit, offset, filter)
 }
 
-func (s *OrderService) GetByID(orderID uuid.UUID) (models.Order, error) {
-	order, err := s.cache.GetOrder(context.Background(), orderID)
+func (s *orderService) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
+	order, err := s.cache.GetOrder(context.Background(), orderID, userID)
 	if err == nil && order.ID != uuid.Nil {
 		return order, nil
 	}
 
-	repo := repository.NewOrderRepo(s.db)
-	order, err = repo.GetByID(orderID)
+	order, err = s.repo.GetByID(orderID, userID)
+	if err != nil {
+		return models.Order{}, err
+	}
 
-	s.cache.SetOrder(context.Background(), order)
+	s.cache.SetOrder(context.Background(), order, userID)
 
 	return order, err
 }
 
-func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error) {
+func (s *orderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (models.Order, error) {
 	if len(inputs) == 0 {
 		return models.Order{}, error_codes.ErrOrderEmpty
 	}
 
-	tx, err := s.db.Begin()
+	tx, err := s.txFactory.BeginTx(context.Background())
 	if err != nil {
 		return models.Order{}, fmt.Errorf("error beginning transaction: %v", err)
 	}
 	defer tx.Rollback()
-
-	productRepo := repository.NewProductRepo(tx)
-	orderRepo := repository.NewOrderRepo(tx)
 
 	var orderItems []models.OrderItem
 	total := 0.0
@@ -74,7 +73,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 			return models.Order{}, error_codes.ErrInvalidQuantity
 		}
 
-		product, err := productRepo.GetByID(input.ProductID)
+		product, err := tx.ProductRepository().GetByID(input.ProductID)
 		if err != nil {
 			return models.Order{}, err
 		}
@@ -94,7 +93,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 		})
 	}
 
-	order, err := orderRepo.Create(models.Order{
+	order, err := tx.OrderRepository().Create(models.Order{
 		UserID:      userID,
 		Status:      models.OrderStatusPending,
 		TotalAmount: total,
@@ -103,7 +102,7 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 		return models.Order{}, err
 	}
 
-	createdItems, err := orderRepo.CreateItems(order.ID, orderItems)
+	createdItems, err := tx.OrderRepository().CreateItems(order.ID, orderItems)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -116,21 +115,18 @@ func (s *OrderService) CreateOrder(userID uuid.UUID, inputs []OrderItemInput) (m
 	return order, nil
 }
 
-func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error) {
+func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.OrderStatus) (models.Order, error) {
 	if !newStatus.IsValid() {
 		return models.Order{}, error_codes.ErrInvalidOrderStatus
 	}
 
-	tx, err := s.db.Begin()
+	tx, err := s.txFactory.BeginTx(context.Background())
 	if err != nil {
 		return models.Order{}, fmt.Errorf("error beginning transaction: %v", err)
 	}
 	defer tx.Rollback()
 
-	orderRepo := repository.NewOrderRepo(tx)
-	productRepo := repository.NewProductRepo(tx)
-
-	order, err := orderRepo.GetByID(orderID)
+	order, err := tx.OrderRepository().GetByID(orderID, userID)
 	if err != nil {
 		return models.Order{}, err
 	}
@@ -140,22 +136,22 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	}
 
 	if newStatus == models.OrderStatusPaid {
-		if err := decrementStockForItems(productRepo, order.Items); err != nil {
+		if err := decrementStockForItems(tx.ProductRepository(), order.Items); err != nil {
 			return models.Order{}, err
 		}
 	}
 
 	if newStatus == models.OrderStatusCancelled && order.Status == models.OrderStatusPaid {
-		if err := incrementStockForItems(productRepo, order.Items); err != nil {
+		if err := incrementStockForItems(tx.ProductRepository(), order.Items); err != nil {
 			return models.Order{}, err
 		}
 	}
 
-	if err := orderRepo.UpdateStatus(orderID, newStatus); err != nil {
+	if err := tx.OrderRepository().UpdateStatus(orderID, userID, newStatus); err != nil {
 		return models.Order{}, err
 	}
 
-	s.cache.DeleteOrder(context.Background(), orderID)
+	s.cache.DeleteOrder(context.Background(), orderID, userID)
 
 	if err := tx.Commit(); err != nil {
 		return models.Order{}, fmt.Errorf("error committing transaction: %v", err)
@@ -165,7 +161,8 @@ func (s *OrderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	return order, nil
 }
 
-func decrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+// TODO: Decrementing stock for items should be done in a more efficient way, possibly in a single query or using batch updates. This is a simple implementation for demonstration purposes.
+func decrementStockForItems(productRepo repository.ProductRepository, items []models.OrderItem) error {
 	for _, item := range items {
 		if err := productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
 			return err
@@ -174,7 +171,8 @@ func decrementStockForItems(productRepo repository.ProductRepo, items []models.O
 	return nil
 }
 
-func incrementStockForItems(productRepo repository.ProductRepo, items []models.OrderItem) error {
+// TODO: Increment stock for items should be done in a more efficient way, possibly in a single query or using batch updates. This is a simple implementation for demonstration purposes.
+func incrementStockForItems(productRepo repository.ProductRepository, items []models.OrderItem) error {
 	for _, item := range items {
 		if err := productRepo.IncrementStock(item.ProductID, item.Quantity); err != nil {
 			return err

@@ -8,18 +8,23 @@ import (
 	"golang-order-manager-api/internal/dto"
 	error_codes "golang-order-manager-api/internal/errors"
 	"golang-order-manager-api/internal/models"
-	repository "golang-order-manager-api/internal/repositories"
 	"golang-order-manager-api/internal/responses"
 	"golang-order-manager-api/internal/services"
-	"golang-order-manager-api/pkg/cache"
-	"golang-order-manager-api/pkg/database"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-func parseOrderFilter(c echo.Context) repository.OrderFilter {
-	f := repository.OrderFilter{}
+type OrderHandler struct {
+	orderService services.OrderService // interface, não struct concreta
+}
+
+func NewOrderHandler(orderService services.OrderService) *OrderHandler {
+	return &OrderHandler{orderService: orderService}
+}
+
+func parseOrderFilter(c echo.Context) models.OrderFilter {
+	f := models.OrderFilter{}
 	if v := c.QueryParam("status"); v != "" {
 		f.Status = &v
 	}
@@ -39,18 +44,12 @@ func parseOrderFilter(c echo.Context) repository.OrderFilter {
 // @Success 200 {object} responses.PaginatedResponse{data=[]dto.OrderResponse}
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders [get]
-func ListOrders(c echo.Context) error {
+func (h *OrderHandler) ListOrders(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 	page, limit := parsePaginationParams(c)
 	filter := parseOrderFilter(c)
 
-	db := database.GetDB()
-
-	orderCache := cache.NewRedisOrderCache()
-
-	orderService := services.NewOrderService(db, orderCache)
-
-	orders, total, err := orderService.GetAllByUserID(userID, page, limit, filter)
+	orders, total, err := h.orderService.GetAllByUserID(userID, page, limit, filter)
 	if err != nil {
 		slog.Error("Failed to list orders", slog.Any("err", err))
 		return responses.Error(c, http.StatusInternalServerError, error_codes.ErrUnexpectedError)
@@ -82,19 +81,15 @@ func ListOrders(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Order not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders/{id} [get]
-func GetOrder(c echo.Context) error {
+func (h *OrderHandler) GetOrder(c echo.Context) error {
+	userID := c.Get("userID").(uuid.UUID)
 
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return responses.Error(c, http.StatusBadRequest, errors.New("invalid order id"))
 	}
 
-	db := database.GetDB()
-	orderCache := cache.NewRedisOrderCache()
-
-	orderService := services.NewOrderService(db, orderCache)
-
-	order, err := orderService.GetByID(orderID)
+	order, err := h.orderService.GetByID(orderID, userID)
 	if err != nil {
 		if errors.Is(err, error_codes.ErrOrderNotFound) {
 			return responses.Error(c, http.StatusNotFound, err)
@@ -121,7 +116,7 @@ func GetOrder(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Product not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders [post]
-func CreateOrder(c echo.Context) error {
+func (h *OrderHandler) CreateOrder(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
 	req := dto.CreateOrderRequest{}
@@ -136,12 +131,7 @@ func CreateOrder(c echo.Context) error {
 		}
 	}
 
-	db := database.GetDB()
-	orderCache := cache.NewRedisOrderCache()
-
-	orderService := services.NewOrderService(db, orderCache)
-
-	order, err := orderService.CreateOrder(userID, inputs)
+	order, err := h.orderService.CreateOrder(userID, inputs)
 	if err != nil {
 		switch {
 		case errors.Is(err, error_codes.ErrOrderEmpty):
@@ -177,7 +167,7 @@ func CreateOrder(c echo.Context) error {
 // @Failure 404 {object} responses.ErrorResponse "Order not found"
 // @Failure 500 {object} responses.ErrorResponse
 // @Router /orders/{id}/status [patch]
-func UpdateOrderStatus(c echo.Context) error {
+func (h *OrderHandler) UpdateOrderStatus(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
 
 	orderID, err := uuid.Parse(c.Param("id"))
@@ -190,11 +180,7 @@ func UpdateOrderStatus(c echo.Context) error {
 
 	newStatus := models.OrderStatus(req.Status)
 
-	db := database.GetDB()
-	orderCache := cache.NewRedisOrderCache()
-	orderService := services.NewOrderService(db, orderCache)
-
-	order, err := orderService.UpdateStatus(orderID, userID, newStatus)
+	order, err := h.orderService.UpdateStatus(orderID, userID, newStatus)
 	if err != nil {
 		switch {
 		case errors.Is(err, error_codes.ErrInvalidOrderStatus):

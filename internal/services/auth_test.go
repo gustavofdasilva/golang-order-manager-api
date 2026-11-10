@@ -207,6 +207,21 @@ func TestRefresh_TokenRevoked(t *testing.T) {
 	assert.ErrorIs(t, err, error_codes.ErrRefreshTokenExpired)
 }
 
+func TestRefresh_TokenNotFound(t *testing.T) {
+	svc, m := makeAuthService(t)
+
+	refreshToken := "not-found-token"
+	hashedToken := security.HashToken(refreshToken)
+
+	m.authRepo.EXPECT().
+		GetRefreshToken(hashedToken).
+		Return(uuid.Nil, time.Time{}, time.Time{}, error_codes.ErrRefreshTokenNotFound)
+
+	_, _, _, err := svc.Refresh(refreshToken)
+
+	assert.ErrorIs(t, err, error_codes.ErrRefreshTokenNotFound)
+}
+
 func TestLogout_Success(t *testing.T) {
 	svc, m := makeAuthService(t)
 

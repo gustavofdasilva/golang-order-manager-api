@@ -170,7 +170,7 @@ func (s *authService) SaveRefreshToken(userID uuid.UUID, refreshToken string) er
 
 	err := s.authRepo.SaveRefreshToken(userID, hashedToken, expiresAt)
 	if err != nil {
-		return fmt.Errorf("error saving refresh token: %v", err)
+		return fmt.Errorf("error saving refresh token: %w", err)
 	}
 
 	return nil
@@ -182,7 +182,7 @@ func (s *authService) GetUserIDByRefreshToken(refreshToken string) (uuid.UUID, e
 
 	userID, revokedAt, expiresAt, err := s.authRepo.GetRefreshToken(hashedToken)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error retrieving refresh token: %v", err)
+		return uuid.Nil, fmt.Errorf("error retrieving refresh token: %w", err)
 	}
 
 	if !revokedAt.IsZero() || time.Now().After(expiresAt) {

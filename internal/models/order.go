@@ -24,6 +24,10 @@ func (s OrderStatus) IsValid() bool {
 }
 
 func (s OrderStatus) CanTransitionTo(next OrderStatus) bool {
+	if !next.IsValid() || !s.IsValid() {
+		return false
+	}
+
 	switch s {
 	case OrderStatusPending:
 		return next == OrderStatusPaid || next == OrderStatusCancelled

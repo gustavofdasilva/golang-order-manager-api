@@ -126,7 +126,7 @@ func (s *orderService) UpdateStatus(orderID, userID uuid.UUID, newStatus models.
 	}
 	defer tx.Rollback()
 
-	order, err := tx.OrderRepository().GetByID(orderID, userID)
+	order, err := tx.OrderRepository().GetByIDForUpdate(orderID, userID)
 	if err != nil {
 		return models.Order{}, err
 	}

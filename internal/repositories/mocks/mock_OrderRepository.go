@@ -263,6 +263,63 @@ func (_c *MockOrderRepository_GetByID_Call) RunAndReturn(run func(uuid.UUID, uui
 	return _c
 }
 
+// GetByIDForUpdate provides a mock function with given fields: orderID, userID
+func (_m *MockOrderRepository) GetByIDForUpdate(orderID uuid.UUID, userID uuid.UUID) (models.Order, error) {
+	ret := _m.Called(orderID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByIDForUpdate")
+	}
+
+	var r0 models.Order
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) (models.Order, error)); ok {
+		return rf(orderID, userID)
+	}
+	if rf, ok := ret.Get(0).(func(uuid.UUID, uuid.UUID) models.Order); ok {
+		r0 = rf(orderID, userID)
+	} else {
+		r0 = ret.Get(0).(models.Order)
+	}
+
+	if rf, ok := ret.Get(1).(func(uuid.UUID, uuid.UUID) error); ok {
+		r1 = rf(orderID, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockOrderRepository_GetByIDForUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByIDForUpdate'
+type MockOrderRepository_GetByIDForUpdate_Call struct {
+	*mock.Call
+}
+
+// GetByIDForUpdate is a helper method to define mock.On call
+//   - orderID uuid.UUID
+//   - userID uuid.UUID
+func (_e *MockOrderRepository_Expecter) GetByIDForUpdate(orderID interface{}, userID interface{}) *MockOrderRepository_GetByIDForUpdate_Call {
+	return &MockOrderRepository_GetByIDForUpdate_Call{Call: _e.mock.On("GetByIDForUpdate", orderID, userID)}
+}
+
+func (_c *MockOrderRepository_GetByIDForUpdate_Call) Run(run func(orderID uuid.UUID, userID uuid.UUID)) *MockOrderRepository_GetByIDForUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uuid.UUID), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockOrderRepository_GetByIDForUpdate_Call) Return(_a0 models.Order, _a1 error) *MockOrderRepository_GetByIDForUpdate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockOrderRepository_GetByIDForUpdate_Call) RunAndReturn(run func(uuid.UUID, uuid.UUID) (models.Order, error)) *MockOrderRepository_GetByIDForUpdate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateStatus provides a mock function with given fields: orderID, userID, status
 func (_m *MockOrderRepository) UpdateStatus(orderID uuid.UUID, userID uuid.UUID, status models.OrderStatus) error {
 	ret := _m.Called(orderID, userID, status)

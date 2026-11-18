@@ -20,6 +20,7 @@ type OrderCache interface {
 type OrderRepository interface {
 	GetAllByUserID(userID uuid.UUID, limit, offset int, f models.OrderFilter) ([]models.Order, int, error)
 	GetByID(orderID, userID uuid.UUID) (models.Order, error)
+	GetByIDForUpdate(orderID, userID uuid.UUID) (models.Order, error)
 	Create(o models.Order) (models.Order, error)
 	CreateItems(orderID uuid.UUID, items []models.OrderItem) ([]models.OrderItem, error)
 	UpdateStatus(orderID, userID uuid.UUID, status models.OrderStatus) error
@@ -73,6 +74,32 @@ func (r *OrderRepo) GetByID(orderID, userID uuid.UUID) (models.Order, error) {
 		SELECT id, user_id, status, total_amount, created_at, updated_at
 		FROM orders
 		WHERE id = $1 AND user_id = $2
+	`
+	var o models.Order
+	err := r.db.QueryRow(query, orderID, userID).
+		Scan(&o.ID, &o.UserID, &o.Status, &o.TotalAmount, &o.CreatedAt, &o.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.Order{}, error_codes.ErrOrderNotFound
+		}
+		return models.Order{}, fmt.Errorf("error scanning order: %v", err)
+	}
+
+	items, err := r.GetItemsByOrderID(orderID)
+	if err != nil {
+		return models.Order{}, err
+	}
+	o.Items = items
+
+	return o, nil
+}
+
+func (r *OrderRepo) GetByIDForUpdate(orderID, userID uuid.UUID) (models.Order, error) {
+	query := `
+		SELECT id, user_id, status, total_amount, created_at, updated_at
+		FROM orders
+		WHERE id = $1 AND user_id = $2
+		FOR UPDATE
 	`
 	var o models.Order
 	err := r.db.QueryRow(query, orderID, userID).

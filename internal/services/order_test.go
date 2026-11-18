@@ -231,7 +231,7 @@ func TestUpdateStatus_InvalidTransition(t *testing.T) {
 	orderID := uuid.New()
 	// tries to transition from Paid to Pending, which is invalid
 	m.orderRepo.EXPECT().
-		GetByID(orderID, userID).
+		GetByIDForUpdate(orderID, userID).
 		Return(models.Order{ID: orderID, UserID: userID, Status: models.OrderStatusPaid}, nil)
 
 	_, err := svc.UpdateStatus(orderID, userID, models.OrderStatusPending)
@@ -253,7 +253,7 @@ func TestUpdateStatus_ToPaid_DecrementsStock(t *testing.T) {
 		Items:  []models.OrderItem{{ProductID: productID, Quantity: 3}},
 	}
 
-	m.orderRepo.EXPECT().GetByID(orderID, userID).Return(order, nil)
+	m.orderRepo.EXPECT().GetByIDForUpdate(orderID, userID).Return(order, nil)
 	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusPaid).Return(nil)
 	m.productRepo.EXPECT().DecrementStock(productID, 3).Return(nil)
 	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID, userID).Return(nil)
@@ -279,7 +279,7 @@ func TestUpdateStatus_ToCancelled_WhenPaid_IncrementsStock(t *testing.T) {
 		Items:  []models.OrderItem{{ProductID: productID, Quantity: 2}},
 	}
 
-	m.orderRepo.EXPECT().GetByID(orderID, userID).Return(order, nil)
+	m.orderRepo.EXPECT().GetByIDForUpdate(orderID, userID).Return(order, nil)
 	m.orderRepo.EXPECT().UpdateStatus(orderID, userID, models.OrderStatusCancelled).Return(nil)
 	m.productRepo.EXPECT().IncrementStock(productID, 2).Return(nil)
 	m.cache.EXPECT().DeleteOrder(mock.Anything, orderID, userID).Return(nil)
